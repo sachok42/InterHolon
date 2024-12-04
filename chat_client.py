@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
 import socket
 import json
+from protocol import *
 
 server_address = ("127.0.0.1", 12345)  # Adjust as needed
 
@@ -52,7 +53,7 @@ def switch_mode(mode):
 # Load group chats
 def load_groups():
 	chat_list.delete(0, tk.END)
-	groups = ["collective"]
+	groups = base_groups
 	if groups:
 		for group in groups:
 			chat_list.insert(tk.END, group)

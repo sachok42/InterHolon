@@ -2,6 +2,7 @@ import socket
 import threading
 import sqlite3
 import json
+from protocol import *
 
 # Initialize SQLite database
 def initialize_db():
@@ -40,7 +41,7 @@ def initialize_db():
     """)
 
     # Pre-populate group chats
-    for group_name in ["collective"]:
+    for group_name in base_groups:
         cursor.execute("INSERT OR IGNORE INTO groups (name) VALUES (?)", (group_name,))
 
     db_connect.commit()
