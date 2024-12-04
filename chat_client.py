@@ -1,133 +1,200 @@
 import tkinter as tk
-from tkinter import scrolledtext, messagebox
+from tkinter import ttk, scrolledtext, messagebox
 import socket
 import json
 
-server_address = ("127.0.0.1", 12345)  # Change if the server is on another machine
+server_address = ("127.0.0.1", 12345)  # Adjust as needed
 
 # Function to send requests to the server
 def send_request(action, data):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-        client_socket.connect(server_address)
-        request = {"action": action}
-        request.update(data)
-        client_socket.send(json.dumps(request).encode())
-        response = json.loads(client_socket.recv(1024).decode())
-        return response
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+		client_socket.connect(server_address)
+		request = {"action": action}
+		request.update(data)
+		client_socket.send(json.dumps(request).encode())
+		response = json.loads(client_socket.recv(1024).decode())
+		return response
 
 # Register a new user
 def register_user():
-    username = register_username.get().strip()
-    if username:
-        response = send_request("register", {"username": username})
-        messagebox.showinfo("Response", response["message"])
-    else:
-        messagebox.showerror("Error", "Username cannot be empty.")
+	username = register_username.get().strip()
+	if username:
+		response = send_request("register", {"username": username})
+		messagebox.showinfo("Response", response["message"])
+	else:
+		messagebox.showerror("Error", "Username cannot be empty.")
 
 # Log in as a user
 def login_user():
-    global current_user
-    username = login_username.get().strip()
-    if username:
-        response = send_request("login", {"username": username})
-        if response["status"] == "success":
-            current_user = username
-            messagebox.showinfo("Success", response["message"])
-            login_screen.destroy()
-            open_chat_window()
-        else:
-            messagebox.showerror("Error", response["message"])
-    else:
-        messagebox.showerror("Error", "Username cannot be empty.")
+	global current_user
+	username = login_username.get().strip()
+	if username:
+		response = send_request("login", {"username": username})
+		if response["status"] == "success":
+			current_user = username
+			messagebox.showinfo("Success", response["message"])
+			login_screen.destroy()
+			open_chat_window()
+		else:
+			messagebox.showerror("Error", response["message"])
+	else:
+		messagebox.showerror("Error", "Username cannot be empty.")
 
-# Switch chats and load messages
-def switch_chat(chat_name):
-    global current_chat
-    current_chat = chat_name
-    response = send_request("get_messages", {"chat_name": current_chat})
-    if response["status"] == "success":
-        chat_area.config(state=tk.NORMAL)
-        chat_area.delete(1.0, tk.END)
-        for sender, content in response["messages"]:
-            tag = "user_message" if sender == current_user else "other_message"
-            chat_area.insert(tk.END, f"{sender}: {content}\n", tag)
-        chat_area.config(state=tk.DISABLED)
+# Switch chat mode
+def switch_mode(mode):
+	global chat_mode
+	chat_mode = mode
+	if chat_mode == "group":
+		load_groups()
+	elif chat_mode == "personal":
+		load_users()
+
+# Load group chats
+def load_groups():
+	chat_list.delete(0, tk.END)
+	groups = ["collective"]
+	if groups:
+		for group in groups:
+			chat_list.insert(tk.END, group)
+	else:
+		chat_list.insert(tk.END, "No groups available.")
+
+# Load user list for personal chats
+def load_users():
+	chat_list.delete(0, tk.END)
+	response = send_request("get_users", {})
+	if response["status"] == "success" and response["users"]:
+		for user in response["users"]:
+			if user != current_user:  # Exclude current user
+				chat_list.insert(tk.END, user)
+	else:
+		chat_list.insert(tk.END, "No users available for personal chat.")
 
 # Send a message
 def send_message():
-    message = user_input.get().strip()
-    if message:
-        response = send_request("send_message", {"chat_name": current_chat, "sender": current_user, "content": message})
-        if response["status"] == "success":
-            chat_area.config(state=tk.NORMAL)
-            chat_area.insert(tk.END, f"{current_user}: {message}\n", "user_message")
-            chat_area.config(state=tk.DISABLED)
-            user_input.delete(0, tk.END)
-            chat_area.see(tk.END)
+	recipient = chat_list.get(chat_list.curselection())
+	content = user_input.get().strip()
+	
+	if not recipient or not content:
+		messagebox.showerror("Invalid entry", "Ensure all inputs")
+	
+	if not recipient or not content:
+		messagebox.showerror("Error", "Please select a chat and enter a message.")
+		return
 
-# Open the chat window
+	if chat_mode == "group":
+		response = send_request("send_group_message", {
+			"group_name": recipient,
+			"sender": current_user,
+			"content": content
+		})
+	elif chat_mode == "personal":
+		response = send_request("send_personal_message", {
+			"sender": current_user,
+			"receiver": recipient,
+			"content": content
+		})
+
+	if response["status"] == "success":
+		load_messages(recipient)
+		user_input.delete(0, tk.END)
+	else:
+		messagebox.showerror("Error", response["message"])
+
+# Load chat messages
+def load_messages(chat_name):
+	if not chat_name:
+		messagebox.showerror("Error", "No chat selected.")
+		return
+
+	chat_display.config(state=tk.NORMAL)
+	chat_display.delete(1.0, tk.END)
+
+	if chat_mode == "group":
+		response = send_request("get_group_messages", {"group_name": chat_name})
+	elif chat_mode == "personal":
+		response = send_request("get_personal_messages", {"user1": current_user, "user2": chat_name})
+
+	if response["status"] == "success":
+		for sender, content in response["messages"]:
+			chat_display.insert(tk.END, f"{sender}: {content}\n")
+	else:
+		messagebox.showerror("Error", response["message"])
+
+	chat_display.config(state=tk.DISABLED)
+
+# Update the chat list selection event
+def on_chat_select(event):
+	try:
+		for idx in range(chat_list.size()):
+			chat_list.itemconfig(idx, bg="white")  # Reset background color
+		selected_idx = chat_list.curselection()[0]
+		chat_list.itemconfig(selected_idx, bg="#d3d3d3")  # Highlight selected chat
+		selected_chat = chat_list.get(selected_idx)
+		load_messages(selected_chat)
+	except tk.TclError:
+		pass
+
+# Chat window
 def open_chat_window():
-    global chat_area, user_input, header_label
-    root = tk.Tk()
-    root.title("Chat Client")
-    root.geometry("600x700")
+	global chat_mode, chat_list, chat_display, user_input
 
-    # Header (top bar)
-    header_frame = tk.Frame(root, bg="#0078D7", height=50)
-    header_frame.pack(fill=tk.X)
-    header_label = tk.Label(header_frame, text=f"{current_user} - Select a Chat", font=("Helvetica", 16), bg="#0078D7", fg="white")
-    header_label.pack(side=tk.LEFT, padx=10)
+	chat_mode = "group"
+	root = tk.Tk()
+	root.title(f"Chat App - Logged in as {current_user}")
+	root.geometry("600x600")
 
-    # Sidebar for chats
-    sidebar_frame = tk.Frame(root, bg="#f5f5f5", width=150)
-    sidebar_frame.pack(side=tk.LEFT, fill=tk.Y)
-    tk.Label(sidebar_frame, text="Chats", font=("Arial", 12, "bold"), bg="#f5f5f5", fg="#333").pack(pady=10)
+	# Top frame: mode selection
+	mode_frame = tk.Frame(root)
+	mode_frame.pack(fill=tk.X)
 
-    for chat in ["Family", "Work", "Friends"]:
-        tk.Button(sidebar_frame, text=chat, font=("Arial", 10), bg="white", relief=tk.FLAT,
-                  command=lambda c=chat: switch_chat(c)).pack(fill=tk.X, padx=10, pady=5)
+	tk.Label(mode_frame, text="Chat Mode:").pack(side=tk.LEFT, padx=10)
+	mode_selector = ttk.Combobox(mode_frame, values=["Group", "Personal"], state="readonly")
+	mode_selector.pack(side=tk.LEFT)
+	mode_selector.current(0)
+	mode_selector.bind("<<ComboboxSelected>>", lambda e: switch_mode(mode_selector.get().lower()))
 
-    # Main chat area
-    main_frame = tk.Frame(root, bg="white")
-    main_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+	# Middle frame: chat list and messages
+	main_frame = tk.Frame(root)
+	main_frame.pack(expand=True, fill=tk.BOTH)
 
-    chat_area = scrolledtext.ScrolledText(main_frame, wrap=tk.WORD, state=tk.DISABLED, bg="#f5f5f5", font=("Arial", 12), relief=tk.FLAT)
-    chat_area.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+	chat_list = tk.Listbox(main_frame, width=20)
+	chat_list.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
+	chat_list.bind("<<ListboxSelect>>", lambda e: load_messages(chat_list.get(chat_list.curselection())))
 
-    chat_area.tag_configure("user_message", foreground="#0078D7", justify="right")
-    chat_area.tag_configure("other_message", foreground="#333333", justify="left")
+	chat_display = scrolledtext.ScrolledText(main_frame, state=tk.DISABLED, wrap=tk.WORD)
+	chat_display.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH, padx=5, pady=5)
 
-    # Input and send button
-    input_frame = tk.Frame(main_frame, bg="white")
-    input_frame.pack(fill=tk.X, padx=10, pady=10)
-    user_input = tk.Entry(input_frame, font=("Arial", 14), bg="#f0f0f0", relief=tk.FLAT)
-    user_input.grid(row=0, column=0, padx=5, pady=10, sticky="ew")
-    input_frame.columnconfigure(0, weight=1)
+	# Bottom frame: message input
+	input_frame = tk.Frame(root)
+	input_frame.pack(fill=tk.X, padx=5, pady=5)
 
-    send_button = tk.Button(input_frame, text="Send", command=send_message, bg="#0078D7", fg="white", font=("Arial", 12), relief=tk.FLAT)
-    send_button.grid(row=0, column=1, padx=5)
+	user_input = tk.Entry(input_frame, font=("Arial", 14))
+	user_input.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5, pady=5)
+	tk.Button(input_frame, text="Send", command=send_message, bg="#0078D7", fg="white").pack(side=tk.RIGHT)
 
-    root.mainloop()
+	load_groups()  # Load default mode
+
+	root.mainloop()
 
 # Login/Register screen
 def open_login_screen():
-    global login_screen, login_username, register_username
-    login_screen = tk.Tk()
-    login_screen.title("Login/Register")
-    login_screen.geometry("400x300")
+	global login_screen, login_username, register_username
+	login_screen = tk.Tk()
+	login_screen.title("Login/Register")
+	login_screen.geometry("400x300")
 
-    tk.Label(login_screen, text="Login", font=("Arial", 14)).pack(pady=10)
-    login_username = tk.Entry(login_screen, font=("Arial", 12))
-    login_username.pack(pady=5)
-    tk.Button(login_screen, text="Login", command=login_user, font=("Arial", 12), bg="#0078D7", fg="white").pack(pady=10)
+	tk.Label(login_screen, text="Login", font=("Arial", 14)).pack(pady=10)
+	login_username = tk.Entry(login_screen, font=("Arial", 12))
+	login_username.pack(pady=5)
+	tk.Button(login_screen, text="Login", command=login_user).pack(pady=10)
 
-    tk.Label(login_screen, text="Register", font=("Arial", 14)).pack(pady=10)
-    register_username = tk.Entry(login_screen, font=("Arial", 12))
-    register_username.pack(pady=5)
-    tk.Button(login_screen, text="Register", command=register_user, font=("Arial", 12), bg="#28A745", fg="white").pack(pady=10)
+	tk.Label(login_screen, text="Register", font=("Arial", 14)).pack(pady=10)
+	register_username = tk.Entry(login_screen, font=("Arial", 12))
+	register_username.pack(pady=5)
+	tk.Button(login_screen, text="Register", command=register_user).pack(pady=10)
 
-    login_screen.mainloop()
+	login_screen.mainloop()
 
 current_user = None
-current_chat = None
 open_login_screen()
