@@ -1,2 +1,4 @@
 
 chat_server.db
+lang_req.sql
+*.db

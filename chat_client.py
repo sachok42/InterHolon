@@ -18,12 +18,44 @@ def send_request(action, data):
 
 # Register a new user
 def register_user():
-	username = register_username.get().strip()
-	if username:
-		response = send_request("register", {"username": username})
-		messagebox.showinfo("Response", response["message"])
-	else:
-		messagebox.showerror("Error", "Username cannot be empty.")
+    def submit_registration():
+        username = username_entry.get().strip()
+        selected_languages = [lang_list.get(i) for i in lang_list.curselection()]
+        if not username:
+            messagebox.showerror("Error", "Username cannot be empty.")
+            return
+        if not selected_languages:
+            messagebox.showerror("Error", "You must select at least one language.")
+            return
+
+        response = send_request("register", {"username": username, "languages": selected_languages})
+        if response["status"] == "success":
+            messagebox.showinfo("Success", "Registration successful.")
+            register_window.destroy()
+        else:
+            messagebox.showerror("Error", response["message"])
+
+    register_window = tk.Toplevel(login_screen)
+    register_window.title("Register")
+
+    tk.Label(register_window, text="Username:").pack()
+    username_entry = tk.Entry(register_window)
+    username_entry.pack()
+
+    tk.Label(register_window, text="Select Languages:").pack()
+    lang_list = tk.Listbox(register_window, selectmode=tk.MULTIPLE)
+    for family, langs in LANGUAGE_TREE.items():
+        if isinstance(langs, dict):
+            for subfamily, sublangs in langs.items():
+                lang_list.insert(tk.END, f"{family} → {subfamily}")
+                for lang in sublangs:
+                    lang_list.insert(tk.END, f"   {lang}")
+        else:
+            lang_list.insert(tk.END, family)
+    lang_list.pack()
+
+    tk.Button(register_window, text="Register", command=submit_registration).pack()
+
 
 # Log in as a user
 def login_user():
