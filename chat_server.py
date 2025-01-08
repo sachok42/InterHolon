@@ -2,6 +2,7 @@ import socket
 import threading
 import sqlite3
 import json
+import numpy as np
 from protocol import *
 
 class ChatServer:
@@ -124,16 +125,22 @@ class ChatServer:
 		return response
 
 	def get_personal_messages(self, cursor, conn, request_data):
-		cursor.execute("SELECT * FROM messages WHERE sender = ? AND receiver = ?", (request_data["user1"], request_data["user2"],))
+		logger.info(f"[SERVER] getting personal messages of {request_data['user1']} and {request_data['user2']}")
+		cursor.execute("SELECT sender, content, timestamp FROM messages WHERE sender = ? AND receiver = ?", (request_data["user1"], request_data["user2"]))
 		sent = cursor.fetchall()
-		cursor.execute("SELECT * FROM messages WHERE sender = ? AND receiver = ?", (request_data["user2"], request_data["user1"],))
+		cursor.execute("SELECT sender, content, timestamp FROM messages WHERE sender = ? AND receiver = ?", (request_data["user2"], request_data["user1"]))
 		received = cursor.fetchall()
-		response = {"status": "success", "received": received, "sent": sent, "all_messages": received + sent}
+		logger.info(f"[SERVER] received are {received}\nand sent are {sent}")
+		response = {"status": "success", "received": received, "sent": sent, "messages": sorted(received + sent, key=lambda element: element[2])}
 		return response
 
 	def get_users(self, cursor, conn, request_data):
+		# logger.log("[SERVER] started gathering users")
 		cursor.execute("SELECT username FROM users")
+		# logger.log(f"[SERVER] users are {users}")
 		users = cursor.fetchall()
+		users = np.array(users).flatten().tolist() # flattened the list
+		# logger.log(f"[SERVER] flatted users to {users}")
 		response = {"status": "sucess", "users": users}
 		return response
 

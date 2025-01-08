@@ -24,7 +24,7 @@ class ChatApp:
 	def send_request(self, action, data):
 		try:
 			with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-				logger.info(f"\n[USER] sent request: action is {action} data is {data}")
+				logger.info(f"[USER] sent request: action is {action} data is {data}")
 				client_socket.connect(self.SERVER_ADDRESS)
 				request = {"action": action, **data}
 				client_socket.send(json.dumps(request).encode())
@@ -101,8 +101,9 @@ class ChatApp:
 			groups = base_groups or ["No groups available."]
 			self.chat_list.insert(tk.END, *groups)
 		elif self.chat_mode == "personal":
-			response = self.send_request("get_users", {})
+			response = self.send_request("get_users", {"user1": self.current_user})
 			users = [user for user in response.get("users", []) if user != self.current_user]
+			logger.info(f"[CLIENT] loading contacts, users are {users}")
 			self.chat_list.insert(tk.END, *users or ["No users available for personal chat."])
 
 	def send_message(self):
