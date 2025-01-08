@@ -5,3 +5,4 @@ lang_req.sql
 enter_window.ui
 new_all_included.py
 chatting_log.log
+chat_server.db

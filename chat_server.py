@@ -4,6 +4,9 @@ import sqlite3
 import json
 import numpy as np
 from protocol import *
+import pyscrypt
+import random
+
 
 class ChatServer:
 	def __init__(self, host="0.0.0.0", port=12345):
@@ -20,7 +23,9 @@ class ChatServer:
 			cursor.execute("""
 				CREATE TABLE IF NOT EXISTS users (
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					username TEXT UNIQUE NOT NULL
+					username TEXT UNIQUE NOT NULL,
+					hashed_password TEXT NOT NULL,
+					salt TEXT NOT NULL
 				)
 			""")
 			cursor.execute("""
@@ -146,13 +151,17 @@ class ChatServer:
 
 	def register_user(self, cursor, conn, request_data):
 		username = request_data.get("username")
+		password = request_data.get("password")
 		languages = request_data.get("languages", [])
 		if not username:
 			return {"status": "error", "message": "Username cannot be empty."}
 		if not languages:
 			return {"status": "error", "message": "You must select at least one language."}
 		try:
-			cursor.execute("INSERT INTO users (username) VALUES (?)", (username,))
+			salt = str(random.randint(1, 1e9))
+			print(f"password is {password}")
+			hashed_password = pyscrypt.hash(password=password.encode('utf-8'), salt=salt.encode('utf-8'), N=1024, r=1, p=1, dkLen=32)
+			cursor.execute("INSERT INTO users (username, hashed_password, salt) VALUES (?, ?, ?)", (username, hashed_password, salt))
 			user_id = cursor.lastrowid
 			cursor.executemany(
 				"INSERT INTO user_languages (user_id, language) VALUES (?, ?)",
@@ -165,10 +174,17 @@ class ChatServer:
 
 	def login_user(self, cursor, request_data):
 		username = request_data.get("username")
-		cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
-		if cursor.fetchone():
-			return {"status": "success", "message": "Login successful"}
-		return {"status": "error", "message": "Invalid username"}
+		cursor.execute("SELECT id, hashed_password, salt FROM users WHERE username = ?", (username,))
+		user_data = cursor.fetchone()
+		print(f"user data is {user_data}")
+		ID, hashed_password, salt = user_data
+		if not user_data:
+			return {"status": "error", "message": "Invalid username"}
+
+		if not pyscrypt.hash(password=request_data["password"].encode('utf-8'), salt=salt.encode('utf-8'), N=1024, r=1, p=1, dkLen=32) == hashed_password:
+			return {"status": "error", "message": "Wrong password"}			
+		
+		return {"status": "success", "message": "Login successful"}
 
 	def send_group_message(self, cursor, conn, request_data):
 		group_name = request_data.get("group_name")

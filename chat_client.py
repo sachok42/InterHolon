@@ -35,37 +35,6 @@ class ChatApp:
 			messagebox.showerror("Connection Error", f"An error occurred: {e}")
 			return {"status": "error", "message": str(e)}
 
-	def register_user(self):
-		def submit_registration():
-			username = username_entry.get().strip()
-			selected_languages = [lang_list.get(i) for i in lang_list.curselection()]
-			if not username:
-				messagebox.showerror("Error", "Username cannot be empty.")
-				return
-			if not selected_languages:
-				messagebox.showerror("Error", "You must select at least one language.")
-				return
-
-			response = self.send_request("register", {"username": username, "languages": selected_languages})
-			if response["status"] == "success":
-				messagebox.showinfo("Success", "Registration successful.")
-				register_window.destroy()
-			else:
-				messagebox.showerror("Error", response.get("message", "Unknown error."))
-
-		register_window = tk.Toplevel(self.login_screen)
-		register_window.title("Register")
-
-		tk.Label(register_window, text="Username:").pack()
-		username_entry = tk.Entry(register_window)
-		username_entry.pack()
-
-		tk.Label(register_window, text="Select Languages:").pack()
-		lang_list = tk.Listbox(register_window, selectmode=tk.MULTIPLE)
-		self.populate_language_list(lang_list)
-		lang_list.pack()
-
-		tk.Button(register_window, text="Register", command=submit_registration).pack()
 
 	def populate_language_list(self, lang_list):
 		for family, langs in LANGUAGE_TREE.items():
@@ -79,8 +48,9 @@ class ChatApp:
 
 	def login_user(self):
 		username = self.login_username.get().strip()
+		password = self.login_password.get()
 		if username:
-			response = self.send_request("login", {"username": username})
+			response = self.send_request("login", {"username": username, "password": password})
 			if response["status"] == "success":
 				self.current_user = username
 				messagebox.showinfo("Success", response["message"])
@@ -180,6 +150,44 @@ class ChatApp:
 		self.load_chats()
 		self.root.mainloop()
 
+	def register_user(self):
+		def submit_registration():
+			username = username_entry.get().strip()
+			password = password_entry.get()
+			selected_languages = [lang_list.get(i) for i in lang_list.curselection()]
+			if not username:
+				messagebox.showerror("Error", "Username cannot be empty.")
+				return
+			if not password:
+				messagebox.showerror("Error", "Password cannot be empty")
+			if not selected_languages:
+				messagebox.showerror("Error", "You must select at least one language.")
+				return
+
+			response = self.send_request("register", {"username": username, "password": password, "languages": selected_languages})
+			if response["status"] == "success":
+				messagebox.showinfo("Success", "Registration successful.")
+				register_window.destroy()
+			else:
+				messagebox.showerror("Error", response.get("message", "Unknown error."))
+
+		register_window = tk.Toplevel(self.login_screen)
+		register_window.title("Register")
+
+		tk.Label(register_window, text="Username:").pack()
+		username_entry = tk.Entry(register_window)
+		username_entry.pack()
+		tk.Label(register_window, text="Password:").pack()
+		password_entry = tk.Entry(register_window)
+		password_entry.pack()
+
+		tk.Label(register_window, text="Select Languages:").pack()
+		lang_list = tk.Listbox(register_window, selectmode=tk.MULTIPLE)
+		self.populate_language_list(lang_list)
+		lang_list.pack()
+
+		tk.Button(register_window, text="Register", command=submit_registration).pack()
+
 	def open_login_screen(self):
 		self.login_screen = tk.Tk()
 		self.login_screen.title("Login/Register")
@@ -188,8 +196,11 @@ class ChatApp:
 		tk.Label(self.login_screen, text="Login", font=("Arial", 14)).pack(pady=10)
 		self.login_username = tk.Entry(self.login_screen, font=("Arial", 12))
 		self.login_username.pack(pady=5)
+		tk.Label(self.login_screen, text="Password", font=("Arial", 14)).pack(pady=10)
+		self.login_password = tk.Entry(self.login_screen, font=("Arial", 12))
+		self.login_password.pack(pady=5)
 		tk.Button(self.login_screen, text="Login", command=self.login_user).pack(pady=10)
-
+		
 		tk.Label(self.login_screen, text="Register", font=("Arial", 14)).pack(pady=10)
 		tk.Button(self.login_screen, text="Register", command=self.register_user).pack(pady=10)
 
