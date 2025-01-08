@@ -4,3 +4,4 @@ lang_req.sql
 *.db
 enter_window.ui
 new_all_included.py
+chatting_log.log
