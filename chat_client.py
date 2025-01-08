@@ -18,16 +18,18 @@ class ChatApp:
 		self.chat_display = None
 		self.user_input = None
 
+		logger.info("\n\nClient on")
 		self.open_login_screen()
 
 	def send_request(self, action, data):
 		try:
 			with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-				logger.info(f"[USER] sent request: action is {action} data is {data}")
+				logger.info(f"\n[USER] sent request: action is {action} data is {data}")
 				client_socket.connect(self.SERVER_ADDRESS)
 				request = {"action": action, **data}
 				client_socket.send(json.dumps(request).encode())
 				response = json.loads(client_socket.recv(1024).decode())
+				logger.info(f"[USER] got response: {response}\n")
 				return response
 		except Exception as e:
 			messagebox.showerror("Connection Error", f"An error occurred: {e}")
@@ -137,12 +139,12 @@ class ChatApp:
 		}
 		
 		response = self.send_request(action, data)
-		logger.info(f"[CLIENT] loading messages from chat {chat_name} returned {response}")
+		# logger.info(f"[CLIENT] loading messages from chat {chat_name} returned {response}")
 
 		if response["status"] == "success":
-			for sender, content in response.get("messages", []):
-				print(f"Message is {send}, {content}")
-				self.chat_display.insert(tk.END, f"{sender}: {content}\n")
+			for sender, content, timestamp in response.get("messages", []):
+				print(f"Message is {sender}, {content}")
+				self.chat_display.insert(tk.END, f"{sender}: {content}\n{timestamp}\n")
 		else:
 			messagebox.showerror("Error", response.get("message", "Unknown error."))
 		self.chat_display.config(state=tk.DISABLED)

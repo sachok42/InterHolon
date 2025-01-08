@@ -8,6 +8,9 @@ class ChatServer:
 	def __init__(self, host="0.0.0.0", port=12345):
 		self.host = host
 		self.port = port
+
+		self.conn = sqlite3.connect("chat_server.db")
+		logger.info("\n\nServer on")
 		self.initialize_db()
 
 	def initialize_db(self):
@@ -89,6 +92,7 @@ class ChatServer:
 
 	def process_request(self, cursor, conn, action, request_data):
 		response = {"status": "error", "message": "Invalid action"}
+		logger.info(f"[SERVER] received request: action {action}, data {request_data}")
 		if action == "register":
 			response = self.register_user(cursor, conn, request_data)
 		elif action == "login":
@@ -96,9 +100,9 @@ class ChatServer:
 		elif action == "send_group_message":
 			response = self.send_group_message(cursor, conn, request_data)
 		elif action == "send_personal_message":
-			pass
+			response = self.send_personal_message(cursor, conn, request_data)
 		elif action == "get_group_messages":
-			response = self.send_group_message(cursor, conn, request_data)
+			response = self.get_group_messages(cursor, conn, request_data)
 		elif action == "get_personal_messages":
 			response = self.get_personal_messages(cursor, conn, request_data)
 		elif action == "get_users":
@@ -108,9 +112,13 @@ class ChatServer:
 		return response
 
 	def get_group_messages(self, cursor, conn, request_data):
-		cursor.execute("SELECT id FROM groups WHERE name = ?", (request_data["group_name"]))
-		group_id = cursor.fetchone()
-		cursor.execute("SELECT * FROM messages WHERE chat_type = 'group' AND groups = ?", (group_id))
+		cursor = conn.cursor()
+		logger.info(f"[SERVER] on get_group_messages: started id decryption, request_data {request_data}")		
+		cursor.execute("SELECT id FROM groups WHERE name = ?", (request_data["group_name"],))
+		group_id = cursor.fetchone()[0]
+		print(f"group_id is {group_id}")
+		logger.info("[SERVER] on get_group_messages: passed id decryption")
+		cursor.execute("SELECT sender, content, timestamp FROM messages WHERE chat_type = 'group' AND chat_id = ?", (group_id,))
 		messages = cursor.fetchall()
 		response = {"status": "success", "messages": messages}
 		return response
@@ -170,6 +178,13 @@ class ChatServer:
 			return {"status": "success", "message": "Message sent"}
 		return {"status": "error", "message": "Group does not exist."}
 
+	def send_personal_message(self, cursor, conn, request_data):
+		sender = request_data.get("sender")
+		content = request_data.get("content")
+		receiver = request_data.get("receiver")
+		cursor.execute("INSERT INTO messages (chat_type, sender, receiver, content) VALUES ('personal', ?, ?, ?)", (sender, receiver, content))
+		return {"status": "success", "message": "Message sent"}
+
 	def start_server(self):
 		server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		server.bind((self.host, self.port))
@@ -179,6 +194,7 @@ class ChatServer:
 		while True:
 			client_socket, addr = server.accept()
 			print(f"Connection established with {addr}")
+			logger.info(f"[SERVER] Connection established with {addr}")
 			client_handler = threading.Thread(target=self.handle_client, args=(client_socket,))
 			client_handler.start()
 
