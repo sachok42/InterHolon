@@ -24,6 +24,8 @@ LANGUAGE_TREE = {
 	}
 }
 
+languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukranian"]
+
 # Function to validate language structure (optional utility)
 def validate_language_tree(language_tree):
 	"""

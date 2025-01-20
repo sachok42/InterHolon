@@ -6,3 +6,7 @@ enter_window.ui
 new_all_included.py
 chatting_log.log
 chat_server.db
+__pycache__/sql_db_init.cpython-311.pyc
+__pycache__/Message.cpython-311.pyc
+__pycache__/protocol.cpython-311.pyc
+__pycache__/protocol.cpython-311.pyc

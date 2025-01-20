@@ -6,7 +6,9 @@ import numpy as np
 from protocol import *
 import pyscrypt
 import random
-
+import spellchecker
+from Message import Message
+from sql_db_init import sql_db_init
 
 class ChatServer:
 	def __init__(self, host="0.0.0.0", port=12345):
@@ -14,49 +16,18 @@ class ChatServer:
 		self.port = port
 
 		self.conn = sqlite3.connect("chat_server.db")
+		self.my_spellchecker = spellchecker.SpellChecker()
 		logger.info("\n\nServer on")
 		self.initialize_db()
 
 	def initialize_db(self):
 		with sqlite3.connect("chat_server.db") as conn:
 			cursor = conn.cursor()
-			cursor.execute("""
-				CREATE TABLE IF NOT EXISTS users (
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					username TEXT UNIQUE NOT NULL,
-					hashed_password TEXT NOT NULL,
-					salt TEXT NOT NULL
-				)
-			""")
-			cursor.execute("""
-				CREATE TABLE IF NOT EXISTS groups (
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					name TEXT UNIQUE NOT NULL
-				)
-			""")
-			cursor.execute("""
-				CREATE TABLE IF NOT EXISTS messages (
-					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					chat_type TEXT CHECK(chat_type IN ('group', 'personal')),
-					chat_id INTEGER,
-					sender TEXT,
-					receiver TEXT,
-					content TEXT,
-					timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-					FOREIGN KEY (chat_id) REFERENCES groups (id),
-					FOREIGN KEY (receiver) REFERENCES users (username)
-				)
-			""")
-			cursor.execute("""
-				CREATE TABLE IF NOT EXISTS user_languages (
-					user_id INTEGER,
-					language TEXT,
-					PRIMARY KEY (user_id, language),
-					FOREIGN KEY (user_id) REFERENCES users (id)
-				)
-			""")
+			sql_db_init(cursor)
 			for group_name in base_groups:
 				cursor.execute("INSERT OR IGNORE INTO groups (name) VALUES (?)", (group_name,))
+			for language_name in languages:
+				cursor.execute("INSERT OR IGNORE INTO languages (name) VALUES (?)", (language_name,))
 
 	@staticmethod
 	def find_related_languages(language):
@@ -96,6 +67,15 @@ class ChatServer:
 			finally:
 				client_socket.close()
 
+	def get_user_id(self, conn, cursor, user):
+		cursor = conn.cursor()
+		cursor.execute("""
+			SELECT id FROM users WHERE username = ?
+			""", (user,))
+		user_id = cursor.fetchone()[0]
+		logger.info(f"[SERVER] user {user} id {user_id}")
+		return user_id
+
 	def process_request(self, cursor, conn, action, request_data):
 		response = {"status": "error", "message": "Invalid action"}
 		logger.info(f"[SERVER] received request: action {action}, data {request_data}")
@@ -113,8 +93,22 @@ class ChatServer:
 			response = self.get_personal_messages(cursor, conn, request_data)
 		elif action == "get_users":
 			response = self.get_users(cursor, conn, request_data)
+		elif action == "get_mistakes":
+			response = self.get_mistakes(cursor, conn, request_data)
 		# Add more actions as needed...
 		logger.info(f"[SERVER] sent response: response is {response}")
+		return response
+
+	def get_mistakes(self, cursor, conn, request_data):
+		# cursor = conn.cursor()
+		logger.info(f"[SERVER] on get_mistakes started the function")
+		cursor.execute("""
+			SELECT message_id, word_number, corrected_word FROM typos WHERE user_id = ?
+			""", (self.get_user_id(conn, cursor, request_data['sender']),))
+		logger.info(f"[SERVER] on get_mistakes started fetching")
+		typos = cursor.fetchall()
+		logger.info(f"[SERVER] on get_mistakes: sender is {request_data['sender']} found mistakes are {typos}")
+		response = {"status": "success", "typos": typos}
 		return response
 
 	def get_group_messages(self, cursor, conn, request_data):
@@ -159,13 +153,14 @@ class ChatServer:
 			return {"status": "error", "message": "You must select at least one language."}
 		try:
 			salt = str(random.randint(1, 1e9))
-			print(f"password is {password}")
+			# print(f"password is {password}")
 			hashed_password = pyscrypt.hash(password=password.encode('utf-8'), salt=salt.encode('utf-8'), N=1024, r=1, p=1, dkLen=32)
 			cursor.execute("INSERT INTO users (username, hashed_password, salt) VALUES (?, ?, ?)", (username, hashed_password, salt))
+			logger.info(f"[SERVER] on register languages are {languages}")
 			user_id = cursor.lastrowid
 			cursor.executemany(
-				"INSERT INTO user_languages (user_id, language) VALUES (?, ?)",
-				[(user_id, lang) for lang in languages]
+				"INSERT INTO user_languages (user_id, language_id) VALUES (?, ?)",
+				[(user_id, cursor.execute("SELECT id FROM languages WHERE name = ?", (lang,)).fetchone()[0]) for lang in languages]
 			)
 			conn.commit()
 			return {"status": "success", "message": "Registration successful"}
@@ -194,10 +189,19 @@ class ChatServer:
 		group_id = cursor.fetchone()
 		if group_id:
 			cursor.execute("""
+				SELECT id FROM messages
+				""")
+			ID = len(cursor.fetchall())
+			cursor.execute("""
 				INSERT INTO messages (chat_type, chat_id, sender, content)
 				VALUES ('group', ?, ?, ?)
 			""", (group_id[0], sender, content))
 			conn.commit()
+			mistakes = self.analyze_message(content)
+			logger.info(f"[SERVER] on send_group_message: mistakes are {mistakes}")
+			cursor.executemany("""
+				INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word) VALUES (?, ?, ?, ?, ?)
+				""", [(self.get_user_id(conn, cursor, request_data["sender"]), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
 			return {"status": "success", "message": "Message sent"}
 		return {"status": "error", "message": "Group does not exist."}
 
@@ -206,7 +210,15 @@ class ChatServer:
 		content = request_data.get("content")
 		receiver = request_data.get("receiver")
 		cursor.execute("INSERT INTO messages (chat_type, sender, receiver, content) VALUES ('personal', ?, ?, ?)", (sender, receiver, content))
+		mistakes = self.analyze_message(content)
+		print("type of mistakes", type(mistakes))
+		cursor.executemany("""
+			INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word) VALUES (?, ?, ?, ?, ?)
+			""", [(self.get_user_id(conn, cursor, request_data["sender"]), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
 		return {"status": "success", "message": "Message sent"}
+
+	def analyze_message(self, message):
+		return Message(message).analyze(self.my_spellchecker)
 
 	def start_server(self):
 		server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

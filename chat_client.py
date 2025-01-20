@@ -21,7 +21,7 @@ class ChatApp:
 		logger.info("\n\nClient on")
 		self.open_login_screen()
 
-	def send_request(self, action, data):
+	def send_request(self, action, data={}):
 		try:
 			with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
 				logger.info(f"[USER] sent request: action is {action} data is {data}")
@@ -37,14 +37,16 @@ class ChatApp:
 
 
 	def populate_language_list(self, lang_list):
-		for family, langs in LANGUAGE_TREE.items():
-			if isinstance(langs, dict):
-				for subfamily, sublangs in langs.items():
-					lang_list.insert(tk.END, f"{family} → {subfamily}")
-					for lang in sublangs:
-						lang_list.insert(tk.END, f"   {lang}")
-			else:
-				lang_list.insert(tk.END, family)
+		# for family, langs in LANGUAGE_TREE.items():
+		# 	if isinstance(langs, dict):
+		# 		for subfamily, sublangs in langs.items():
+		# 			lang_list.insert(tk.END, f"{family} → {subfamily}")
+		# 			for lang in sublangs:
+		# 				lang_list.insert(tk.END, f"   {lang}")
+		# 	else:
+		# 		lang_list.insert(tk.END, family)
+		for language in languages:
+			lang_list.insert(tk.END, language)
 
 	def login_user(self):
 		username = self.login_username.get().strip()
@@ -147,8 +149,29 @@ class ChatApp:
 		self.user_input.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5, pady=5)
 		tk.Button(input_frame, text="Send", command=self.send_message, bg="#0078D7", fg="white").pack(side=tk.RIGHT)
 
+		tk.Button(self.root, text="mistakes", command=self.open_mistakes_window, bg="green", fg="white").pack(side=tk.LEFT)
+		
 		self.load_chats()
 		self.root.mainloop()
+
+	def open_mistakes_window(self):
+		self.mistakes_window = tk.Toplevel(self.root)
+		self.mistakes_window.title("Register")
+		self.mistakes_window.geometry("1600x900")
+
+		self.mistakes_list = tk.Listbox(self.mistakes_window)
+		self.mistakes_list.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
+
+		self.understood_button = tk.Button(self.root, text="Understood", command=self.send_message, padx=5, pady=5).pack
+
+		self.load_mistakes()
+
+	def load_mistakes(self):
+		response = self.send_request("get_mistakes", {"sender": self.current_user})
+		typos = response.get("typos", [])
+		mistakes_names = [f"typo {typo[0]} wrong word num {typo[1]}" for typo in typos]
+		logger.info(f"[CLIENT] ready to show mistakes {mistakes_names}")
+		self.mistakes_list.insert(tk.END, *mistakes_names)
 
 	def register_user(self):
 		def submit_registration():
