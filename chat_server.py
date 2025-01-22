@@ -76,6 +76,14 @@ class ChatServer:
 		logger.info(f"[SERVER] user {user} id {user_id}")
 		return user_id
 
+	# def get_z_from_xy_a_column(self, cursor, x, y, z, a):
+	# 	print("catching mistake")
+	# 	cursor.execute("""
+	# 		SELECT ? FROM ? WHERE ? = ?
+	# 		""", (a, x, y, z))
+	# 	print("gotcha")
+	# 	return cursor.fetchone()[0]
+
 	def process_request(self, cursor, conn, action, request_data):
 		response = {"status": "error", "message": "Invalid action"}
 		logger.info(f"[SERVER] received request: action {action}, data {request_data}")
@@ -95,15 +103,42 @@ class ChatServer:
 			response = self.get_users(cursor, conn, request_data)
 		elif action == "get_mistakes":
 			response = self.get_mistakes(cursor, conn, request_data)
+		elif action == "load_typo_message":
+			response = self.load_typo_message(cursor, conn, request_data)
 		# Add more actions as needed...
 		logger.info(f"[SERVER] sent response: response is {response}")
+		return response
+
+	def load_typo_message(self, cursor, conn, request_data):
+		cursor.execute("""
+			SELECT word_number, corrected_word, message_id FROM typos WHERE id = ?
+			""", (request_data["id"],))
+		mistake = cursor.fetchone()
+		logger.info(f"[SERVER] on load_typo_message mistake is {mistake}")
+		word_number = mistake[0]
+		message_id = mistake[2]
+		cursor.execute("""
+			SELECT content, chat_type, chat_id, receiver, timestamp, sender FROM messages WHERE id = ?
+			""", (message_id,))
+		message = cursor.fetchone()
+		logger.info(f"[SERVER] on load_typo_message message is {message}")
+		words = message[0].split()
+		pre_mistake = " ".join(words[:word_number])
+		wrong_word = words[word_number]
+		post_mistake = " ".join(words[word_number + 1:])
+		print("Before the func")
+		receiver = message[3] or cursor.execute("SELECT name FROM groups WHERE id = ?", (message[2],)).fetchone()[0]
+		timestamp = message[4]
+
+		response = {"receiver": receiver, "content_start": pre_mistake, "content_mistake": wrong_word, "content_end": post_mistake, "timestamp": timestamp, "corrected_word": mistake[1]}
+
 		return response
 
 	def get_mistakes(self, cursor, conn, request_data):
 		# cursor = conn.cursor()
 		logger.info(f"[SERVER] on get_mistakes started the function")
 		cursor.execute("""
-			SELECT message_id, word_number, corrected_word FROM typos WHERE user_id = ?
+			SELECT id, message_id, word_number, corrected_word FROM typos WHERE user_id = ?
 			""", (self.get_user_id(conn, cursor, request_data['sender']),))
 		logger.info(f"[SERVER] on get_mistakes started fetching")
 		typos = cursor.fetchall()
@@ -189,14 +224,12 @@ class ChatServer:
 		group_id = cursor.fetchone()
 		if group_id:
 			cursor.execute("""
-				SELECT id FROM messages
-				""")
-			ID = len(cursor.fetchall())
-			cursor.execute("""
 				INSERT INTO messages (chat_type, chat_id, sender, content)
 				VALUES ('group', ?, ?, ?)
 			""", (group_id[0], sender, content))
 			conn.commit()
+			cursor.execute("SELECT COUNT(*) FROM messages")
+			ID = cursor.fetchone()[0]
 			mistakes = self.analyze_message(content)
 			logger.info(f"[SERVER] on send_group_message: mistakes are {mistakes}")
 			cursor.executemany("""
@@ -210,6 +243,9 @@ class ChatServer:
 		content = request_data.get("content")
 		receiver = request_data.get("receiver")
 		cursor.execute("INSERT INTO messages (chat_type, sender, receiver, content) VALUES ('personal', ?, ?, ?)", (sender, receiver, content))
+		cursor.execute("SELECT COUNT(*) FROM messages")
+		ID = cursor.fetchone()[0]
+		logger.info(f"ID is {ID}")
 		mistakes = self.analyze_message(content)
 		print("type of mistakes", type(mistakes))
 		cursor.executemany("""

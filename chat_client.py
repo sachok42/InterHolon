@@ -122,6 +122,24 @@ class ChatApp:
 			messagebox.showerror("Error", response.get("message", "Unknown error."))
 		self.chat_display.config(state=tk.DISABLED)
 
+	def load_mistake_data(self, mistake_header):
+		self.mistake_display.config(state=tk.NORMAL)
+		self.mistake_display.delete(1.0, tk.END)
+
+		ID = int(mistake_header.split()[1])
+		
+		response = self.send_request("load_typo_message", {"id": ID})
+
+		self.mistake_display.insert(tk.END, f"{response['receiver']}:")
+		self.mistake_display.insert(tk.END, f"{response['content_start']}")
+		self.mistake_display.insert(tk.END, f" {response['content_mistake'].upper()} ")
+		self.mistake_display.insert(tk.END, f"{response['content_end']}\n")
+		self.mistake_display.insert(tk.END, f"{response['corrected_word']}\n")
+		self.mistake_display.insert(tk.END, f"{response['timestamp']}\n")
+
+		self.mistake_display.insert(tk.END, "the end\n")
+		self.mistake_display.config(state=tk.DISABLED)
+
 	def open_chat_window(self):
 		self.root = tk.Tk()
 		self.root.title(f"Chat App - Logged in as {self.current_user}")
@@ -129,6 +147,7 @@ class ChatApp:
 
 		mode_frame = tk.Frame(self.root)
 		mode_frame.pack(fill=tk.X)
+
 		tk.Label(mode_frame, text="Chat Mode:").pack(side=tk.LEFT, padx=10)
 		mode_selector = ttk.Combobox(mode_frame, values=["Group", "Personal"], state="readonly")
 		mode_selector.pack(side=tk.LEFT)
@@ -159,8 +178,14 @@ class ChatApp:
 		self.mistakes_window.title("Register")
 		self.mistakes_window.geometry("1600x900")
 
-		self.mistakes_list = tk.Listbox(self.mistakes_window)
+		self.mistakes_frame = tk.Frame(self.mistakes_window)
+		self.mistakes_frame.pack(expand=True, fill=tk.BOTH)
+		self.mistakes_list = tk.Listbox(self.mistakes_frame)
 		self.mistakes_list.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
+
+		self.mistakes_list.bind("<<ListboxSelect>>", lambda e: self.load_mistake_data(self.mistakes_list.get(self.mistakes_list.curselection())))
+		self.mistake_display = scrolledtext.ScrolledText(self.mistakes_frame, state=tk.DISABLED, wrap=tk.WORD)
+		self.mistake_display.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH, padx=5, pady=5)
 
 		self.understood_button = tk.Button(self.root, text="Understood", command=self.send_message, padx=5, pady=5).pack
 
@@ -169,7 +194,7 @@ class ChatApp:
 	def load_mistakes(self):
 		response = self.send_request("get_mistakes", {"sender": self.current_user})
 		typos = response.get("typos", [])
-		mistakes_names = [f"typo {typo[0]} wrong word num {typo[1]}" for typo in typos]
+		mistakes_names = [f"typo {typo[0]} message {typo[1]} wrong word num {typo[2]}" for typo in typos]
 		logger.info(f"[CLIENT] ready to show mistakes {mistakes_names}")
 		self.mistakes_list.insert(tk.END, *mistakes_names)
 
