@@ -1,3 +1,5 @@
+from protocol import *
+
 def sql_db_init(cursor):
 	cursor.execute("""
 				CREATE TABLE IF NOT EXISTS users (
@@ -14,9 +16,10 @@ def sql_db_init(cursor):
 		)
 	""")
 	cursor.execute("""
-		CREATE TABLE IF NOT EXISTS groups (
+		CREATE TABLE IF NOT EXISTS chats (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT UNIQUE NOT NULL
+			name TEXT UNIQUE NOT NULL,
+			type TEXT CHECK(type in ('group', 'personal')) DEFAULT 'group'
 		)
 	""")
 	cursor.execute("""
@@ -24,12 +27,15 @@ def sql_db_init(cursor):
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			chat_type TEXT CHECK(chat_type IN ('group', 'personal')),
 			chat_id INTEGER,
-			sender TEXT,
-			receiver TEXT,
+			sender_id INTEGER,
+			receiver_id INTEGER,
 			content TEXT,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (chat_id) REFERENCES groups (id),
-			FOREIGN KEY (receiver) REFERENCES users (username)
+			FOREIGN KEY (chat_type) REFERENCES groups (type),
+			FOREIGN KEY (sender_id) REFERENCES users (id),
+			FOREIGN KEY (receiver_id) REFERENCES users (id)
+			-- PRIMARY KEY (group_id, id)
 		)
 	""")
 	cursor.execute("""
@@ -49,10 +55,27 @@ def sql_db_init(cursor):
 			message_id INTEGER,
 			word_number INTEGER,
 			corrected_word TEXT,
-			-- PRIMARY KEY (user_id, language),
 			FOREIGN KEY (message_id) REFERENCES messages(id),
 			FOREIGN KEY (language_id) REFERENCES languages(id),
 			FOREIGN KEY (user_id) REFERENCES users (id)
 		)
 	""")
-	
+	cursor.execute("""
+		CREATE TABLE IF NOT EXISTS contacts (
+			id1 INTEGER,
+			id2 INTEGER,
+			chat_id INTEGER UNIQUE,
+			FOREIGN KEY (chat_id) REFERENCES chats(id),
+			FOREIGN KEY (id1) REFERENCES users(id),
+			FOREIGN KEY (id2) REFERENCES users(id)
+			)
+		""")
+	# cursor.execute("""
+	# 	CREATE INDEX OR IGNORE message_index ON messages (chat_id, id)
+	# 	""")
+
+	for group_name in base_groups:
+		cursor.execute("INSERT OR IGNORE INTO chats (name) VALUES (?)", (group_name,))
+	for language_name in languages:
+		cursor.execute("INSERT OR IGNORE INTO languages (name) VALUES (?)", (language_name,))
+

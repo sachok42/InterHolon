@@ -1,13 +1,6 @@
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
-import socket
-import json
-from protocol import *
-import logging
+from chat_client_logic import *
 
-class ChatApp:
-	SERVER_ADDRESS = ("127.0.0.1", 12345)  # Adjust as needed
-
+class ChatAppGUI(ChatAppLogic):
 	def __init__(self):
 		self.current_user = None
 		self.chat_mode = "group"
@@ -21,30 +14,7 @@ class ChatApp:
 		logger.info("\n\nClient on")
 		self.open_login_screen()
 
-	def send_request(self, action, data={}):
-		try:
-			with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-				logger.info(f"[USER] sent request: action is {action} data is {data}")
-				client_socket.connect(self.SERVER_ADDRESS)
-				request = {"action": action, **data}
-				client_socket.send(json.dumps(request).encode())
-				response = json.loads(client_socket.recv(1024).decode())
-				logger.info(f"[USER] got response: {response}\n")
-				return response
-		except Exception as e:
-			messagebox.showerror("Connection Error", f"An error occurred: {e}")
-			return {"status": "error", "message": str(e)}
-
-
 	def populate_language_list(self, lang_list):
-		# for family, langs in LANGUAGE_TREE.items():
-		# 	if isinstance(langs, dict):
-		# 		for subfamily, sublangs in langs.items():
-		# 			lang_list.insert(tk.END, f"{family} → {subfamily}")
-		# 			for lang in sublangs:
-		# 				lang_list.insert(tk.END, f"   {lang}")
-		# 	else:
-		# 		lang_list.insert(tk.END, family)
 		for language in languages:
 			lang_list.insert(tk.END, language)
 
@@ -140,6 +110,9 @@ class ChatApp:
 		self.mistake_display.insert(tk.END, "the end\n")
 		self.mistake_display.config(state=tk.DISABLED)
 
+	def load_more(self):
+		response = self.send_request("more_messages", {"user1": self.current_user, "chat_mode": self.chat_mode, "chat": self.chat_list.curselection()})
+
 	def open_chat_window(self):
 		self.root = tk.Tk()
 		self.root.title(f"Chat App - Logged in as {self.current_user}")
@@ -168,6 +141,8 @@ class ChatApp:
 		self.user_input.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5, pady=5)
 		tk.Button(input_frame, text="Send", command=self.send_message, bg="#0078D7", fg="white").pack(side=tk.RIGHT)
 
+		tk.Button(main_frame, text="more", command=self.load_more, bg="#0078D7", fg="white").pack(side=tk.TOP)
+
 		tk.Button(self.root, text="mistakes", command=self.open_mistakes_window, bg="green", fg="white").pack(side=tk.LEFT)
 		
 		self.load_chats()
@@ -175,8 +150,8 @@ class ChatApp:
 
 	def open_mistakes_window(self):
 		self.mistakes_window = tk.Toplevel(self.root)
-		self.mistakes_window.title("Register")
-		self.mistakes_window.geometry("1600x900")
+		self.mistakes_window.title("Mistakes")
+		self.mistakes_window.geometry("800x450")
 
 		self.mistakes_frame = tk.Frame(self.mistakes_window)
 		self.mistakes_frame.pack(expand=True, fill=tk.BOTH)
@@ -255,4 +230,4 @@ class ChatApp:
 		self.login_screen.mainloop()
 
 if __name__ == "__main__":
-	app = ChatApp()
+	app = ChatAppGUI()

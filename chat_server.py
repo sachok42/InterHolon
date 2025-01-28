@@ -9,8 +9,10 @@ import random
 import spellchecker
 from Message import Message
 from sql_db_init import sql_db_init
+from ChatServerUtilities import *
 
-class ChatServer:
+
+class ChatServer(ChatServerUtilities):
 	def __init__(self, host="0.0.0.0", port=12345):
 		self.host = host
 		self.port = port
@@ -18,32 +20,29 @@ class ChatServer:
 		self.conn = sqlite3.connect("chat_server.db")
 		self.my_spellchecker = spellchecker.SpellChecker()
 		logger.info("\n\nServer on")
+		self.messages_num = 0
+		self.users_num = 0
+		self.chats_num = 0
+
 		self.initialize_db()
 
 	def initialize_db(self):
 		with sqlite3.connect("chat_server.db") as conn:
 			cursor = conn.cursor()
 			sql_db_init(cursor)
-			for group_name in base_groups:
-				cursor.execute("INSERT OR IGNORE INTO groups (name) VALUES (?)", (group_name,))
-			for language_name in languages:
-				cursor.execute("INSERT OR IGNORE INTO languages (name) VALUES (?)", (language_name,))
 
-	@staticmethod
-	def find_related_languages(language):
-		related_languages = set()
-		def traverse(tree, target):
-			for key, value in tree.items():
-				if key == target:
-					related_languages.update(value if isinstance(value, list) else [])
-					return True
-				if isinstance(value, dict) and traverse(value, target):
-					related_languages.add(key)
-					related_languages.update(value if isinstance(value, list) else [])
-					return True
-			return False
-		traverse(LANGUAGE_TREE, language)
-		return related_languages
+			self.users_num = cursor.execute("""
+				SELECT COUNT(*) FROM users
+				""").fetchone()[0]
+			self.messages_num = cursor.execute("""
+				SELECT COUNT(*) FROM messages
+				""").fetchone()[0]
+			self.chat_num = cursor.execute("""
+				SELECT COUNT(*) FROM chats
+				""").fetchone()[0]
+
+			self.register_user(cursor, conn, {"password": "admin", "username": "admin", "languages": ["English"]})
+			conn.commit()
 
 	def handle_client(self, client_socket):
 		with sqlite3.connect("chat_server.db") as conn:
@@ -66,23 +65,6 @@ class ChatServer:
 				print(f"Error: {e}")
 			finally:
 				client_socket.close()
-
-	def get_user_id(self, conn, cursor, user):
-		cursor = conn.cursor()
-		cursor.execute("""
-			SELECT id FROM users WHERE username = ?
-			""", (user,))
-		user_id = cursor.fetchone()[0]
-		logger.info(f"[SERVER] user {user} id {user_id}")
-		return user_id
-
-	# def get_z_from_xy_a_column(self, cursor, x, y, z, a):
-	# 	print("catching mistake")
-	# 	cursor.execute("""
-	# 		SELECT ? FROM ? WHERE ? = ?
-	# 		""", (a, x, y, z))
-	# 	print("gotcha")
-	# 	return cursor.fetchone()[0]
 
 	def process_request(self, cursor, conn, action, request_data):
 		response = {"status": "error", "message": "Invalid action"}
@@ -109,6 +91,22 @@ class ChatServer:
 		logger.info(f"[SERVER] sent response: response is {response}")
 		return response
 
+	def add_chat(self, conn, chat_name, chat_type='group'):
+		cursor = conn.cursor()
+		cursor.execute("""
+			INSERT INTO chats (name, type) VALUES (?, ?)
+			""", (chat_name, chat_type))
+		self.chat_num += 1
+		logger.info(f"[SERVER] on add_chat: chat {chat_name} type {chat_type} added")
+
+	def add_contact_by_id(self, conn, id1, id2):
+		logger.info(f"[SERVER] on add_contact_by_id: id1 is {id1} and id2 is {id2}")
+		cursor = conn.cursor()
+		self.add_chat(conn, f"{id1}-{id2}", 'personal')
+		cursor.execute("""
+			INSERT INTO contacts (id1, id2, chat_id) VALUES (?, ?, ?)
+			""", (id1, id2, self.chat_num))
+
 	def load_typo_message(self, cursor, conn, request_data):
 		cursor.execute("""
 			SELECT word_number, corrected_word, message_id FROM typos WHERE id = ?
@@ -118,7 +116,7 @@ class ChatServer:
 		word_number = mistake[0]
 		message_id = mistake[2]
 		cursor.execute("""
-			SELECT content, chat_type, chat_id, receiver, timestamp, sender FROM messages WHERE id = ?
+			SELECT content, chat_type, chat_id, timestamp, sender_id FROM messages WHERE id = ?
 			""", (message_id,))
 		message = cursor.fetchone()
 		logger.info(f"[SERVER] on load_typo_message message is {message}")
@@ -127,8 +125,8 @@ class ChatServer:
 		wrong_word = words[word_number]
 		post_mistake = " ".join(words[word_number + 1:])
 		print("Before the func")
-		receiver = message[3] or cursor.execute("SELECT name FROM groups WHERE id = ?", (message[2],)).fetchone()[0]
-		timestamp = message[4]
+		receiver = self.get_chat_name(conn, message[2])
+		timestamp = message[3]
 
 		response = {"receiver": receiver, "content_start": pre_mistake, "content_mistake": wrong_word, "content_end": post_mistake, "timestamp": timestamp, "corrected_word": mistake[1]}
 
@@ -139,7 +137,7 @@ class ChatServer:
 		logger.info(f"[SERVER] on get_mistakes started the function")
 		cursor.execute("""
 			SELECT id, message_id, word_number, corrected_word FROM typos WHERE user_id = ?
-			""", (self.get_user_id(conn, cursor, request_data['sender']),))
+			""", (self.get_user_id(conn, request_data['sender']),))
 		logger.info(f"[SERVER] on get_mistakes started fetching")
 		typos = cursor.fetchall()
 		logger.info(f"[SERVER] on get_mistakes: sender is {request_data['sender']} found mistakes are {typos}")
@@ -147,38 +145,50 @@ class ChatServer:
 		return response
 
 	def get_group_messages(self, cursor, conn, request_data):
-		cursor = conn.cursor()
-		logger.info(f"[SERVER] on get_group_messages: started id decryption, request_data {request_data}")		
-		cursor.execute("SELECT id FROM groups WHERE name = ?", (request_data["group_name"],))
+		cursor = conn.cursor()	
+		cursor.execute("SELECT id FROM chats WHERE name = ?", (request_data["group_name"],))
 		group_id = cursor.fetchone()[0]
-		print(f"group_id is {group_id}")
-		logger.info("[SERVER] on get_group_messages: passed id decryption")
-		cursor.execute("SELECT sender, content, timestamp FROM messages WHERE chat_type = 'group' AND chat_id = ?", (group_id,))
+		# logger.info("[SERVER] on get_group_messages: ")
+		cursor.execute("SELECT sender_id, content, timestamp FROM messages WHERE chat_type = 'group' AND chat_id = ?", (group_id,))
 		messages = cursor.fetchall()
+		messages = self.replenish_ids_with_usernames(conn, messages)
 		response = {"status": "success", "messages": messages}
 		return response
 
 	def get_personal_messages(self, cursor, conn, request_data):
 		logger.info(f"[SERVER] getting personal messages of {request_data['user1']} and {request_data['user2']}")
-		cursor.execute("SELECT sender, content, timestamp FROM messages WHERE sender = ? AND receiver = ?", (request_data["user1"], request_data["user2"]))
-		sent = cursor.fetchall()
-		cursor.execute("SELECT sender, content, timestamp FROM messages WHERE sender = ? AND receiver = ?", (request_data["user2"], request_data["user1"]))
-		received = cursor.fetchall()
-		logger.info(f"[SERVER] received are {received}\nand sent are {sent}")
-		response = {"status": "success", "received": received, "sent": sent, "messages": sorted(received + sent, key=lambda element: element[2])}
+		id1 = self.get_user_id(conn, request_data['user1'])
+		id2 = self.get_user_id(conn, request_data['user2'])
+		
+		cursor.execute("""
+			SELECT chat_id FROM contacts WHERE id1 = ? AND id2 = ? OR id1 = ? AND id2 = ? 
+			""", (id1, id2, id2, id1))
+		chat_id = cursor.fetchone()[0]
+		cursor.execute("SELECT sender_id, content, timestamp FROM messages WHERE chat_id = ?", (chat_id,))
+		messages = cursor.fetchall()
+		messages = self.replenish_ids_with_usernames(conn, messages)
+		response = {"status": "success", "messages": messages}
 		return response
 
 	def get_users(self, cursor, conn, request_data):
-		# logger.log("[SERVER] started gathering users")
-		cursor.execute("SELECT username FROM users")
-		# logger.log(f"[SERVER] users are {users}")
+		logger.info("[SERVER] started gathering users")
+		ID = self.get_user_id(conn, request_data["user1"])
+		cursor.execute("""
+			SELECT id1, id2 FROM contacts WHERE id1 = ? OR id2 = ?
+			""", (ID, ID))
+		# logger.info(f"[SERVER] users are {users}")
 		users = cursor.fetchall()
-		users = np.array(users).flatten().tolist() # flattened the list
-		# logger.log(f"[SERVER] flatted users to {users}")
+		logger.info(f"[SERVER] on get_users: users are {users}")
+		users = self.flatten_array(users) # flattened the list
+		logger.info(f"[SERVER] on get_users: users are {users}")
+		users = self.replenish_ids_with_usernames_flat(conn, users)
+		logger.info(f"[SERVER] on get_users: users are {users}")
+		# logger.info(f"[SERVER] flatted users to {users}")
 		response = {"status": "sucess", "users": users}
 		return response
 
 	def register_user(self, cursor, conn, request_data):
+		logger.info(f"[SERVER] on register_user: user is {request_data['username']}")
 		username = request_data.get("username")
 		password = request_data.get("password")
 		languages = request_data.get("languages", [])
@@ -197,6 +207,8 @@ class ChatServer:
 				"INSERT INTO user_languages (user_id, language_id) VALUES (?, ?)",
 				[(user_id, cursor.execute("SELECT id FROM languages WHERE name = ?", (lang,)).fetchone()[0]) for lang in languages]
 			)
+			self.users_num += 1
+			self.add_contact_by_id(conn, self.users_num, 1)
 			conn.commit()
 			return {"status": "success", "message": "Registration successful"}
 		except sqlite3.IntegrityError:
@@ -216,45 +228,81 @@ class ChatServer:
 		
 		return {"status": "success", "message": "Login successful"}
 
+	def send_message(self, conn, request_data):
+		logger.info(f"[SERVER] on send_personal_message message if {request_data}")
+		content = request_data.get("content")
+		sender_id = self.get_user_id(conn, request_data.get("sender"))
+		receiver_id = self.get_user_id(conn, request_data.get("receiver"))
+		cursor = conn.cursor()
+		cursor.execute("""
+			SELECT chat_id FROM contacts WHERE id1 = ? AND id2 = ? OR id1 = ? AND id2 = ?
+			""", (sender_id, receiver_id, receiver_id, sender_id))
+		chat_id = cursor.fetchone()[0]
+
+		cursor.execute("INSERT INTO messages (chat_type, sender_id, receiver_id, content, chat_id) VALUES ('personal', ?, ?, ?, ?)", (sender_id, receiver_id, content, chat_id))
+		self.messages_num += 1
+		ID = self.messages_num
+		logger.info(f"ID is {ID}")
+		message = Message(content, request_data["sender"], None, None, request_data["receiver"])
+		# mistakes = self.analyze_message(content)
+		mistakes_handler = threading.Thread(target=self.analyze_message_autonomous, args=(message, ID))
+		mistakes_handler.start()
+		return {"status": "success", "message": "Message sent"}
+
+
 	def send_group_message(self, cursor, conn, request_data):
 		group_name = request_data.get("group_name")
 		sender = request_data.get("sender")
 		content = request_data.get("content")
-		cursor.execute("SELECT id FROM groups WHERE name = ?", (group_name,))
-		group_id = cursor.fetchone()
+		sender_id = self.get_user_id(conn, sender)
+		cursor.execute("SELECT id FROM chats WHERE name = ?", (group_name,))
+		group_id = cursor.fetchone()[0]
+		logger.info(f"[SERVER] on send_group_message: sending a message to group id {group_id}")
 		if group_id:
 			cursor.execute("""
-				INSERT INTO messages (chat_type, chat_id, sender, content)
+				INSERT INTO messages (chat_type, chat_id, sender_id, content)
 				VALUES ('group', ?, ?, ?)
-			""", (group_id[0], sender, content))
+			""", (group_id, sender_id, content))
 			conn.commit()
 			cursor.execute("SELECT COUNT(*) FROM messages")
 			ID = cursor.fetchone()[0]
-			mistakes = self.analyze_message(content)
-			logger.info(f"[SERVER] on send_group_message: mistakes are {mistakes}")
-			cursor.executemany("""
-				INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word) VALUES (?, ?, ?, ?, ?)
-				""", [(self.get_user_id(conn, cursor, request_data["sender"]), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
-			return {"status": "success", "message": "Message sent"}
+			# mistakes = self.analyze_message(content)
+
+			message = Message(content, sender, None, group_id, None)
+			mistakes_handler = threading.Thread(target=self.analyze_message_autonomous, args=(message, ID))
+			mistakes_handler.start()
+
+			return {"status": "success", "message": "message sent"}
+
 		return {"status": "error", "message": "Group does not exist."}
 
 	def send_personal_message(self, cursor, conn, request_data):
-		sender = request_data.get("sender")
+		logger.info(f"[SERVER] on send_personal_message message if {request_data}")
 		content = request_data.get("content")
-		receiver = request_data.get("receiver")
-		cursor.execute("INSERT INTO messages (chat_type, sender, receiver, content) VALUES ('personal', ?, ?, ?)", (sender, receiver, content))
-		cursor.execute("SELECT COUNT(*) FROM messages")
-		ID = cursor.fetchone()[0]
-		logger.info(f"ID is {ID}")
-		mistakes = self.analyze_message(content)
-		print("type of mistakes", type(mistakes))
+		sender_id = self.get_user_id(conn, request_data.get("sender"))
+		receiver_id = self.get_user_id(conn, request_data.get("receiver"))
+		cursor.execute("""
+			SELECT chat_id FROM contacts WHERE id1 = ? AND id2 = ? OR id1 = ? AND id2 = ?
+			""", (sender_id, receiver_id, receiver_id, sender_id))
+		chat_id = cursor.fetchone()[0]
+		request_data["chat_id"] = chat_id
+		return self.send_message(conn, request_data)
+
+
+	def analyze_message_autonomous(self, message, ID):
+		logger.info(f"[SERVER] started analysing message {ID}")
+		conn = sqlite3.connect("chat_server.db")
+		cursor = conn.cursor()
+		mistakes = message.analyze(self.my_spellchecker)
 		cursor.executemany("""
 			INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word) VALUES (?, ?, ?, ?, ?)
-			""", [(self.get_user_id(conn, cursor, request_data["sender"]), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
-		return {"status": "success", "message": "Message sent"}
+			""", [(self.get_user_id(conn, message.sender), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
+		conn.commit()
+		return
 
 	def analyze_message(self, message):
-		return Message(message).analyze(self.my_spellchecker)
+		message = Message(message)
+		return message.analyze(self.my_spellchecker)
 
 	def start_server(self):
 		server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -1,7 +1,7 @@
 class Message:
-	def __init__(self, content, author=None, chat=None, timestamp=None):
+	def __init__(self, content, sender=None, timestamp=None, chat=None, receiver=None):
 		self.content = content
-		self.author = author
+		self.sender = sender
 		self.chat = chat
 		self.timestamp = timestamp
 
