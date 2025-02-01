@@ -145,29 +145,26 @@ class ChatServer(ChatServerUtilities):
 		return response
 
 	def get_group_messages(self, cursor, conn, request_data):
+		logger.info(f"[SERVER] on get_group_messages: request_data is {request_data}")
 		cursor = conn.cursor()	
 		cursor.execute("SELECT id FROM chats WHERE name = ?", (request_data["group_name"],))
 		group_id = cursor.fetchone()[0]
-		# logger.info("[SERVER] on get_group_messages: ")
-		cursor.execute("SELECT sender_id, content, timestamp FROM messages WHERE chat_type = 'group' AND chat_id = ?", (group_id,))
-		messages = cursor.fetchall()
-		messages = self.replenish_ids_with_usernames(conn, messages)
-		response = {"status": "success", "messages": messages}
+
+		messages, last_id = self.get_messages(conn, group_id)
+		response = {"status": "success", "messages": messages, "last_id": last_id}
 		return response
 
 	def get_personal_messages(self, cursor, conn, request_data):
 		logger.info(f"[SERVER] getting personal messages of {request_data['user1']} and {request_data['user2']}")
 		id1 = self.get_user_id(conn, request_data['user1'])
 		id2 = self.get_user_id(conn, request_data['user2'])
-		
 		cursor.execute("""
 			SELECT chat_id FROM contacts WHERE id1 = ? AND id2 = ? OR id1 = ? AND id2 = ? 
 			""", (id1, id2, id2, id1))
 		chat_id = cursor.fetchone()[0]
-		cursor.execute("SELECT sender_id, content, timestamp FROM messages WHERE chat_id = ?", (chat_id,))
-		messages = cursor.fetchall()
-		messages = self.replenish_ids_with_usernames(conn, messages)
-		response = {"status": "success", "messages": messages}
+		
+		messages, last_id = self.get_messages(conn, chat_id)
+		response = {"status": "success", "messages": messages, "last_id": last_id}
 		return response
 
 	def get_users(self, cursor, conn, request_data):
@@ -287,18 +284,6 @@ class ChatServer(ChatServerUtilities):
 		chat_id = cursor.fetchone()[0]
 		request_data["chat_id"] = chat_id
 		return self.send_message(conn, request_data)
-
-
-	def analyze_message_autonomous(self, message, ID):
-		logger.info(f"[SERVER] started analysing message {ID}")
-		conn = sqlite3.connect("chat_server.db")
-		cursor = conn.cursor()
-		mistakes = message.analyze(self.my_spellchecker)
-		cursor.executemany("""
-			INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word) VALUES (?, ?, ?, ?, ?)
-			""", [(self.get_user_id(conn, message.sender), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
-		conn.commit()
-		return
 
 	def analyze_message(self, message):
 		message = Message(message)

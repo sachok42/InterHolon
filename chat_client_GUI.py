@@ -1,7 +1,10 @@
 from chat_client_logic import *
+import time
+
 
 class ChatAppGUI(ChatAppLogic):
 	def __init__(self):
+		super(ChatAppGUI, self).__init__()
 		self.current_user = None
 		self.chat_mode = "group"
 		self.login_screen = None
@@ -11,12 +14,10 @@ class ChatAppGUI(ChatAppLogic):
 		self.chat_display = None
 		self.user_input = None
 
+		self.loading_period = 1
+
 		logger.info("\n\nClient on")
 		self.open_login_screen()
-
-	def populate_language_list(self, lang_list):
-		for language in languages:
-			lang_list.insert(tk.END, language)
 
 	def login_user(self):
 		username = self.login_username.get().strip()
@@ -48,6 +49,10 @@ class ChatAppGUI(ChatAppLogic):
 			logger.info(f"[CLIENT] loading contacts, users are {users}")
 			self.chat_list.insert(tk.END, *users or ["No users available for personal chat."])
 
+	def automatic_load(self):
+		time.sleep(self.loading_period)
+		self.load_chats()
+
 	def send_message(self):
 		try:
 			recipient = self.chat_list.get(self.chat_list.curselection())
@@ -64,32 +69,20 @@ class ChatAppGUI(ChatAppLogic):
 			}
 			response = self.send_request(action, data)
 			if response["status"] == "success":
-				self.load_messages(recipient)
+				self.load_messages_GUI(recipient)
 				self.user_input.delete(0, tk.END)
 			else:
 				messagebox.showerror("Error", response.get("message", "Unknown error."))
 		except tk.TclError:
 			messagebox.showerror("Error", "Please select a chat.")
 
-	def load_messages(self, chat_name):
-		logger.info(f"[CLIENT] started loading messages from chat {chat_name}")
+	def load_messages_GUI(self, chat_name):
 		self.chat_display.config(state=tk.NORMAL)
 		self.chat_display.delete(1.0, tk.END)
-		action = "get_group_messages" if self.chat_mode == "group" else "get_personal_messages"
-		data = {
-			"group_name" if self.chat_mode == "group" else "user2": chat_name,
-			"user1": self.current_user
-		}
-		
-		response = self.send_request(action, data)
-		# logger.info(f"[CLIENT] loading messages from chat {chat_name} returned {response}")
-
-		if response["status"] == "success":
-			for sender, content, timestamp in response.get("messages", []):
-				print(f"Message is {sender}, {content}")
-				self.chat_display.insert(tk.END, f"{sender}: {content}\n{timestamp}\n")
-		else:
-			messagebox.showerror("Error", response.get("message", "Unknown error."))
+		messages = self.load_messages(chat_name)
+		for sender, content, timestamp in messages:
+			print(f"Message is {sender}, {content}")
+			self.chat_display.insert(tk.END, f"{sender}: {content}\n{timestamp}\n")
 		self.chat_display.config(state=tk.DISABLED)
 
 	def load_mistake_data(self, mistake_header):
@@ -131,7 +124,7 @@ class ChatAppGUI(ChatAppLogic):
 		main_frame.pack(expand=True, fill=tk.BOTH)
 		self.chat_list = tk.Listbox(main_frame, width=20)
 		self.chat_list.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
-		self.chat_list.bind("<<ListboxSelect>>", lambda e: self.load_messages(self.chat_list.get(self.chat_list.curselection())))
+		self.chat_list.bind("<<ListboxSelect>>", lambda e: self.load_messages_GUI(self.chat_list.get(self.chat_list.curselection())))
 		self.chat_display = scrolledtext.ScrolledText(main_frame, state=tk.DISABLED, wrap=tk.WORD)
 		self.chat_display.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH, padx=5, pady=5)
 
@@ -228,6 +221,14 @@ class ChatAppGUI(ChatAppLogic):
 		tk.Button(self.login_screen, text="Register", command=self.register_user).pack(pady=10)
 
 		self.login_screen.mainloop()
+
+	def open_profile(self):
+		self.profile_screen = tk.Toplevel(self.root)
+		self.profile_screen.title("Profile")
+		self.profile_screen.geometry("400x300")
+
+		tk.Label(self.profile_screen, text="Username", font=("Arial", 14)).pack(pady=10)
+
 
 if __name__ == "__main__":
 	app = ChatAppGUI()

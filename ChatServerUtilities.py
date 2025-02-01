@@ -1,5 +1,6 @@
 from protocol import *
 import numpy as np
+import sqlite3
 
 
 class ChatServerUtilities:
@@ -39,6 +40,28 @@ class ChatServerUtilities:
 			SELECT name FROM chats WHERE id = ?
 			""", (ID,))
 		return cursor.fetchone()[0]
+		
+	def get_messages(self, conn, group_id, last_id=1e6):
+		cursor = conn.cursor()
+		cursor.execute("SELECT sender_id, content, timestamp FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10", (group_id, last_id))
+		messages = cursor.fetchall()[-1::-1]
+		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10", (group_id, last_id))
+		ids = self.flatten_array(cursor.fetchall())
+		messages = self.replenish_ids_with_usernames(conn, messages)
+		last_id = min(ids)
+		return messages, last_id
 
 	def flatten_array(self, array):
 		return np.array(array).flatten().tolist()
+
+	def analyze_message_autonomous(self, message, ID):
+		logger.info(f"[SERVER] started analysing message {ID}")
+		conn = sqlite3.connect("chat_server.db")
+		cursor = conn.cursor()
+		mistakes = message.analyze(self.my_spellchecker)
+		cursor.executemany("""
+			INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word) VALUES (?, ?, ?, ?, ?)
+			""", [(self.get_user_id(conn, message.sender), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
+		conn.commit()
+		return
+
