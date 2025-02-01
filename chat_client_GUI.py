@@ -77,6 +77,7 @@ class ChatAppGUI(ChatAppLogic):
 			messagebox.showerror("Error", "Please select a chat.")
 
 	def load_messages_GUI(self, chat_name):
+		self.chat_name = chat_name
 		self.chat_display.config(state=tk.NORMAL)
 		self.chat_display.delete(1.0, tk.END)
 		messages = self.load_messages(chat_name)
@@ -104,7 +105,11 @@ class ChatAppGUI(ChatAppLogic):
 		self.mistake_display.config(state=tk.DISABLED)
 
 	def load_more(self):
-		response = self.send_request("more_messages", {"user1": self.current_user, "chat_mode": self.chat_mode, "chat": self.chat_list.curselection()})
+		self.chat_display.config(state=tk.NORMAL)
+		messages = self.load_messages(self.chat_name, True)
+		for sender, content, timestamp in messages[-1::-1]:
+			print(f"Message is {sender}, {content}")
+			self.chat_display.insert(1.0, f"{sender}: {content}\n{timestamp}\n")
 
 	def open_chat_window(self):
 		self.root = tk.Tk()
@@ -125,18 +130,25 @@ class ChatAppGUI(ChatAppLogic):
 		self.chat_list = tk.Listbox(main_frame, width=20)
 		self.chat_list.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
 		self.chat_list.bind("<<ListboxSelect>>", lambda e: self.load_messages_GUI(self.chat_list.get(self.chat_list.curselection())))
-		self.chat_display = scrolledtext.ScrolledText(main_frame, state=tk.DISABLED, wrap=tk.WORD)
-		self.chat_display.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH, padx=5, pady=5)
+		
+		display_and_top_bar_frame = tk.Frame(main_frame)
+		display_and_top_bar_frame.pack(expand=True, fill=tk.BOTH, side=tk.RIGHT)
+		top_bar_frame = tk.Frame(display_and_top_bar_frame)
+		top_bar_frame.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
+		tk.Button(top_bar_frame, text="Mistakes", command=self.open_mistakes_window, bg="green", fg="white").grid(column=0, row=0, pady=5, padx=5)
+		tk.Button(top_bar_frame, text="Profile", command=self.open_profile, bg="green", fg="white").grid(column=1, row=0, pady=5, padx=5)
+		tk.Button(top_bar_frame, text="More messages", command=self.load_more, bg="#0078D7", fg="white").grid(column=2, row=0, pady=5, padx=5)
+
+		display_frame = tk.Frame(display_and_top_bar_frame)
+		display_frame.pack(expand=True, fill=tk.BOTH, side=tk.BOTTOM)
+		self.chat_display = scrolledtext.ScrolledText(display_frame, state=tk.DISABLED, wrap=tk.WORD)
+		self.chat_display.pack(side=tk.BOTTOM, expand=True, fill=tk.BOTH, padx=5, pady=5)
 
 		input_frame = tk.Frame(self.root)
 		input_frame.pack(fill=tk.X, padx=5, pady=5)
 		self.user_input = tk.Entry(input_frame, font=("Arial", 14))
 		self.user_input.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5, pady=5)
 		tk.Button(input_frame, text="Send", command=self.send_message, bg="#0078D7", fg="white").pack(side=tk.RIGHT)
-
-		tk.Button(main_frame, text="more", command=self.load_more, bg="#0078D7", fg="white").pack(side=tk.TOP)
-
-		tk.Button(self.root, text="mistakes", command=self.open_mistakes_window, bg="green", fg="white").pack(side=tk.LEFT)
 		
 		self.load_chats()
 		self.root.mainloop()
@@ -227,7 +239,7 @@ class ChatAppGUI(ChatAppLogic):
 		self.profile_screen.title("Profile")
 		self.profile_screen.geometry("400x300")
 
-		tk.Label(self.profile_screen, text="Username", font=("Arial", 14)).pack(pady=10)
+		tk.Label(self.profile_screen, text=f"Username", font=("Arial", 14)).pack(pady=10)
 
 
 if __name__ == "__main__":

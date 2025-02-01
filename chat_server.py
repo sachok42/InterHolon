@@ -150,7 +150,7 @@ class ChatServer(ChatServerUtilities):
 		cursor.execute("SELECT id FROM chats WHERE name = ?", (request_data["group_name"],))
 		group_id = cursor.fetchone()[0]
 
-		messages, last_id = self.get_messages(conn, group_id)
+		messages, last_id = self.get_messages(conn, group_id, request_data["last_id"])
 		response = {"status": "success", "messages": messages, "last_id": last_id}
 		return response
 
@@ -163,7 +163,7 @@ class ChatServer(ChatServerUtilities):
 			""", (id1, id2, id2, id1))
 		chat_id = cursor.fetchone()[0]
 		
-		messages, last_id = self.get_messages(conn, chat_id)
+		messages, last_id = self.get_messages(conn, chat_id, request_data["last_id"])
 		response = {"status": "success", "messages": messages, "last_id": last_id}
 		return response
 

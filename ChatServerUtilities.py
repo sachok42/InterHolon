@@ -46,7 +46,7 @@ class ChatServerUtilities:
 		cursor.execute("SELECT sender_id, content, timestamp FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10", (group_id, last_id))
 		messages = cursor.fetchall()[-1::-1]
 		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10", (group_id, last_id))
-		ids = self.flatten_array(cursor.fetchall())
+		ids = self.flatten_array(cursor.fetchall()) + [1e9]
 		messages = self.replenish_ids_with_usernames(conn, messages)
 		last_id = min(ids)
 		return messages, last_id
