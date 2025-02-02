@@ -234,12 +234,20 @@ class ChatAppGUI(ChatAppLogic):
 
 		self.login_screen.mainloop()
 
+	def get_languages(self):
+		response = self.send_request("get_languages", {"user1": self.current_user})
+		return response["languages"]
+
 	def open_profile(self):
 		self.profile_screen = tk.Toplevel(self.root)
 		self.profile_screen.title("Profile")
 		self.profile_screen.geometry("400x300")
 
-		tk.Label(self.profile_screen, text=f"Username", font=("Arial", 14)).pack(pady=10)
+		tk.Label(self.profile_screen, text=f"Username: {self.current_user}", font=("Arial", 14)).pack(pady=10)
+		languages = self.get_languages()
+		language_list = tk.Listbox(self.profile_screen)
+		# tk.END(language)
+		language_list.pack()
 
 
 if __name__ == "__main__":

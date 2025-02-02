@@ -19,10 +19,15 @@ class ChatServerUtilities:
 			return None
 
 	def get_username(self, cursor, ID):
-		logger.info(f"[SERVER] find the name of user id {ID}")
+		logger.info(f"[SERVER] finds the name of user id {ID}")
 		cursor.execute("SELECT username FROM users WHERE id = ?", (ID,))
 		username = cursor.fetchone()[0]
 		return username
+
+	def get_language_name(self, cursor, ID):
+		logger.info(f"[SERVER] finds name of the user id {ID}")
+		cursor.execute("SELECT name FROM languages WHERE id = ?", (ID,))
+		return cursor.fetchone()[0]
 
 	def replenish_ids_with_usernames(self, conn, elements):
 		cursor = conn.cursor()
@@ -32,6 +37,11 @@ class ChatServerUtilities:
 	def replenish_ids_with_usernames_flat(self, conn, elements):
 		cursor = conn.cursor()
 		result = [self.get_username(cursor, element) for element in elements]
+		return result
+
+	def replenish_ids_with_languages_flat(self, conn, elements):
+		cursor = conn.cursor()
+		result = [self.get_username(cursor, element) in elements]
 		return result
 
 	def get_chat_name(self, conn, ID):

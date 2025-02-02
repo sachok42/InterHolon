@@ -132,6 +132,17 @@ class ChatServer(ChatServerUtilities):
 
 		return response
 
+	def get_usser_languages(self, conn, request_data):
+		logger.info(f"[SERVER] on get_languages: request_data is {request_data}")
+		cursor = conn.cursor()
+		cursor.execute("""
+			SELECT language_id FROM user_languages WHERE user_id = ?
+			""", (request_data["user1"],))
+		ids = self.flatten_array(cursor.fetchall())
+		languages = self.replenish_ids_with_languages_flat(conn, ids)
+		response = {"status": "success", "languages": languages}
+		return response
+
 	def get_mistakes(self, cursor, conn, request_data):
 		# cursor = conn.cursor()
 		logger.info(f"[SERVER] on get_mistakes started the function")
