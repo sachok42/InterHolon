@@ -14,12 +14,12 @@ from ChatServerUtilities import *
 
 class ChatServer(ChatServerUtilities):
 	def __init__(self, host="0.0.0.0", port=12345):
+		logger.info("\n\nServer on")
 		self.host = host
 		self.port = port
 
 		self.conn = sqlite3.connect("chat_server.db")
 		self.my_spellchecker = spellchecker.SpellChecker()
-		logger.info("\n\nServer on")
 		self.messages_num = 0
 		self.users_num = 0
 		self.chats_num = 0
@@ -44,28 +44,6 @@ class ChatServer(ChatServerUtilities):
 			self.register_user(cursor, conn, {"password": "admin", "username": "admin", "languages": ["English"]})
 			conn.commit()
 
-	def handle_client(self, client_socket):
-		with sqlite3.connect("chat_server.db") as conn:
-			cursor = conn.cursor()
-			try:
-				while True:
-					request = client_socket.recv(1024).decode()
-					if not request:
-						break
-					try:
-						request_data = json.loads(request)
-					except json.JSONDecodeError:
-						client_socket.send(json.dumps({"status": "error", "message": "Invalid JSON"}).encode())
-						continue
-
-					action = request_data.get("action")
-					response = self.process_request(cursor, conn, action, request_data)
-					client_socket.send(json.dumps(response).encode())
-			except Exception as e:
-				print(f"Error: {e}")
-			finally:
-				client_socket.close()
-
 	def process_request(self, cursor, conn, action, request_data):
 		response = {"status": "error", "message": "Invalid action"}
 		logger.info(f"[SERVER] received request: action {action}, data {request_data}")
@@ -87,6 +65,8 @@ class ChatServer(ChatServerUtilities):
 			response = self.get_mistakes(cursor, conn, request_data)
 		elif action == "load_typo_message":
 			response = self.load_typo_message(cursor, conn, request_data)
+		elif action == "get_languages":
+			response = self.get_user_languages(conn, request_data)
 		# Add more actions as needed...
 		logger.info(f"[SERVER] sent response: response is {response}")
 		return response
@@ -132,7 +112,7 @@ class ChatServer(ChatServerUtilities):
 
 		return response
 
-	def get_usser_languages(self, conn, request_data):
+	def get_user_languages(self, conn, request_data):
 		logger.info(f"[SERVER] on get_languages: request_data is {request_data}")
 		cursor = conn.cursor()
 		cursor.execute("""
@@ -237,7 +217,7 @@ class ChatServer(ChatServerUtilities):
 		return {"status": "success", "message": "Login successful"}
 
 	def send_message(self, conn, request_data):
-		logger.info(f"[SERVER] on send_personal_message message if {request_data}")
+		logger.info(f"[SERVER] on send_message message is {request_data}")
 		content = request_data.get("content")
 		sender_id = self.get_user_id(conn, request_data.get("sender"))
 		receiver_id = self.get_user_id(conn, request_data.get("receiver"))
@@ -248,6 +228,7 @@ class ChatServer(ChatServerUtilities):
 		chat_id = cursor.fetchone()[0]
 
 		cursor.execute("INSERT INTO messages (chat_type, sender_id, receiver_id, content, chat_id) VALUES ('personal', ?, ?, ?, ?)", (sender_id, receiver_id, content, chat_id))
+		conn.commit()
 		self.messages_num += 1
 		ID = self.messages_num
 		logger.info(f"ID is {ID}")
@@ -256,7 +237,6 @@ class ChatServer(ChatServerUtilities):
 		mistakes_handler = threading.Thread(target=self.analyze_message_autonomous, args=(message, ID))
 		mistakes_handler.start()
 		return {"status": "success", "message": "Message sent"}
-
 
 	def send_group_message(self, cursor, conn, request_data):
 		group_name = request_data.get("group_name")
@@ -285,7 +265,7 @@ class ChatServer(ChatServerUtilities):
 		return {"status": "error", "message": "Group does not exist."}
 
 	def send_personal_message(self, cursor, conn, request_data):
-		logger.info(f"[SERVER] on send_personal_message message if {request_data}")
+		logger.info(f"[SERVER] on send_personal_message message is {request_data}")
 		content = request_data.get("content")
 		sender_id = self.get_user_id(conn, request_data.get("sender"))
 		receiver_id = self.get_user_id(conn, request_data.get("receiver"))
@@ -299,6 +279,40 @@ class ChatServer(ChatServerUtilities):
 	def analyze_message(self, message):
 		message = Message(message)
 		return message.analyze(self.my_spellchecker)
+
+	def handle_client(self, client_socket):
+		private_key, public_key = generate_key()
+		public_pem = public_key.public_bytes(
+		encoding=serialization.Encoding.PEM,
+		format=serialization.PublicFormat.SubjectPublicKeyInfo
+		)
+		client_socket.send(public_pem)
+		logger.info(f"[SERVER] sent pem starting {public_pem.hex()[:10]}")
+		received_data = client_socket.recv(basic_buffer_size)
+		logger.info(f"[SERVER] got pem starting {received_data.hex()[:10]}")
+		public_key = serialization.load_pem_public_key(received_data)
+		with sqlite3.connect("chat_server.db") as conn:
+			cursor = conn.cursor()
+			try:
+				while True:
+					request = client_socket.recv(basic_buffer_size)
+					request = decrypt_message(request, private_key)
+					if not request:
+						break
+					try:
+						request_data = json.loads(request)
+					except json.JSONDecodeError:
+						client_socket.send(encrypt_message(json.dumps({"status": "error", "message": "Invalid JSON"}), public_key))
+						continue
+					action = request_data.get("action")
+					response = self.process_request(cursor, conn, action, request_data)
+					message = encrypt_message(json.dumps(response), public_key)
+					logger.info(f"[SERVER] on handle_client: message length is {len(message)}")
+					client_socket.send(message)
+			except Exception as e:
+				print(f"Error: {e}")
+			finally:
+				client_socket.close()
 
 	def start_server(self):
 		server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -1,6 +1,7 @@
 from SpeechPart import SpeechPart
 
-pronouns = ["i", "you", "he", "she", "it", "they"]
+pronouns = {"i", "you", "he", "she", "it", "they"}
+conjuctions = {"and", "or"}
 
 class EnglishWordAnalyzer:
 	def __init__(self):
@@ -11,6 +12,8 @@ class EnglishWordAnalyzer:
 		length = len(word)
 
 		if word in pronouns: return SpeechPart.PRONOUN
+
+		if word in conjuctions: return SpeechPart.CONJUCTION
 
 		if length < 3:
 			return SpeechPart.PREPOSITION

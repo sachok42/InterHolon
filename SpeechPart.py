@@ -7,7 +7,7 @@ class SpeechPart(Enum):
 	ARTICLE = auto()
 	PRONOUN = auto()
 	PREPOSITION = auto()
-
+	CONJUNCTION = auto() 
 
 
 if __name__ == '__main__':

@@ -16,7 +16,6 @@ class ChatAppGUI(ChatAppLogic):
 
 		self.loading_period = 1
 
-		logger.info("\n\nClient on")
 		self.open_login_screen()
 
 	def login_user(self):

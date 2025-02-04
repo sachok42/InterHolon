@@ -12,7 +12,7 @@ class ChatServerUtilities:
 				SELECT id FROM users WHERE username = ?
 				""", (user,))
 			user_id = cursor.fetchone()[0]
-			logger.info(f"[SERVER] user {user} id {user_id}")
+			# logger.info(f"[SERVER] user {user} id {user_id}")
 			return user_id
 		except Exception as e:
 			logger.error(f"[SERVER] on get_user_id: user {user} not found")

@@ -1,9 +1,31 @@
 import logging
-from cryptography.fernet import Fernet
-
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+import random
+import os
+import json
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
+
+
+languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukranian"]
+basic_buffer_size = 4096
+# Function to validate language structure (optional utility)
+def validate_language_tree(language_tree):
+	"""
+	Validates the structure of the LANGUAGE_TREE.
+	Ensures every branch is a dictionary and leaves are lists.
+	"""
+	if not isinstance(language_tree, dict):
+		raise TypeError("LANGUAGE_TREE must be a dictionary at the root level.")
+	for family, subfamilies in language_tree.items():
+		if not isinstance(subfamilies, dict):
+			raise TypeError(f"Subfamilies under '{family}' must be dictionaries.")
+		for subfamily, languages in subfamilies.items():
+			if not isinstance(languages, list):
+				raise TypeError(f"Languages under '{subfamily}' in '{family}' must be lists.")
 
 # Base group categories for organizing languages
 base_groups = ["Collective", "Indo-European", "Semitic", "Uralic"] # Placeholder for broader linguistic categories or roles
@@ -25,22 +47,67 @@ LANGUAGE_TREE = {
 	}
 }
 
-languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukranian"]
+def custom_log(text):
+	logger.info(text)
+	print(text)
 
-# Function to validate language structure (optional utility)
-def validate_language_tree(language_tree):
-	"""
-	Validates the structure of the LANGUAGE_TREE.
-	Ensures every branch is a dictionary and leaves are lists.
-	"""
-	if not isinstance(language_tree, dict):
-		raise TypeError("LANGUAGE_TREE must be a dictionary at the root level.")
-	for family, subfamilies in language_tree.items():
-		if not isinstance(subfamilies, dict):
-			raise TypeError(f"Subfamilies under '{family}' must be dictionaries.")
-		for subfamily, languages in subfamilies.items():
-			if not isinstance(languages, list):
-				raise TypeError(f"Languages under '{subfamily}' in '{family}' must be lists.")
+standard_key_size = 2048
+def generate_key():
+	private_key = rsa.generate_private_key(
+		public_exponent=65537,
+		key_size=standard_key_size
+		)
+	public_key = private_key.public_key()
+	return private_key, public_key
+
+
+def encrypt_message(message, public_key):
+	logger.info(f"[PROTOCOL] started encrypting message")
+	aes_key = os.urandom(32)
+	iv = os.urandom(12)
+
+	aes_cipher = Cipher(algorithms.AES(aes_key), modes.GCM(iv))
+	encryptor = aes_cipher.encryptor()
+	ciphertext = encryptor.update(message.encode()) + encryptor.finalize()
+	encrypted_key = public_key.encrypt(
+		aes_key,
+		padding.OAEP(
+			mgf=padding.MGF1(algorithm=hashes.SHA256()),
+			algorithm=hashes.SHA256(),
+			label=None
+		)
+	)
+	res = json.dumps({
+		"aes_key": encrypted_key.hex(),
+		"iv": iv.hex(),
+		"ciphertext": ciphertext.hex(),
+		"tag": encryptor.tag.hex()
+		})
+	logger.info(f"[PROTOCOL] finished encrypting message")
+	return res.encode()
+
+
+def decrypt_message(data, private_key):
+	logger.info(f"[PROTOCOL] started decrypting message")
+	data = json.loads(data)
+	encrypted_aes_key = bytes.fromhex(data["aes_key"])
+	iv = bytes.fromhex(data["iv"])
+	ciphertext = bytes.fromhex(data["ciphertext"])
+	tag = bytes.fromhex(data["tag"])
+
+	aes_key = private_key.decrypt(
+		encrypted_aes_key,
+		padding.OAEP(
+			mgf=padding.MGF1(algorithm=hashes.SHA256()),
+			algorithm=hashes.SHA256(),
+			label=None
+		)
+	)
+	aes_cipher = Cipher(algorithms.AES(aes_key), modes.GCM(iv, tag))
+	decryptor = aes_cipher.decryptor()
+	decrypted_message = decryptor.update(ciphertext) + decryptor.finalize()
+	logger.info(f"[PROTOCOL] finished decrypting message")
+	return decrypted_message.decode()
 
 # Run validation on script load (optional)
-validate_language_tree(LANGUAGE_TREE)
+# validate_language_tree(LANGUAGE_TREE)
