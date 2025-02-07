@@ -36,11 +36,11 @@ class ChatAppLogic:
 			# self.client_socket.connect(self.SERVER_ADDRESS)
 			request = {"action": action, **data}
 			message = encrypt_message(json.dumps(request), self.public_key)
-			custom_log(f"[CLIENT] encrypted_message type is {type(message)}")
+			# custom_log(f"[CLIENT] encrypted_message type is {type(message)}")
 			self.client_socket.send(message)
 			logger.info(f"[CLIENT] sent request: action is {action} data is {data}")
 			encrypted_message = self.client_socket.recv(basic_buffer_size)
-			logger.info(f"[CLIENT] on send_request: encrypted_message length is {len(encrypted_message)}")
+			# logger.info(f"[CLIENT] on send_request: encrypted_message length is {len(encrypted_message)}")
 			response = json.loads(decrypt_message(encrypted_message, self.private_key))
 			logger.info(f"[CLIENT] got response: {response}\n")
 			return response

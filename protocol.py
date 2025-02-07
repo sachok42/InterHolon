@@ -9,6 +9,7 @@ import json
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
 
+standard_font = ("Arial", 14)
 
 languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukranian"]
 basic_buffer_size = 4096
@@ -62,7 +63,7 @@ def generate_key():
 
 
 def encrypt_message(message, public_key):
-	logger.info(f"[PROTOCOL] started encrypting message")
+	# logger.info(f"[PROTOCOL] started encrypting message")
 	aes_key = os.urandom(32)
 	iv = os.urandom(12)
 
@@ -83,12 +84,12 @@ def encrypt_message(message, public_key):
 		"ciphertext": ciphertext.hex(),
 		"tag": encryptor.tag.hex()
 		})
-	logger.info(f"[PROTOCOL] finished encrypting message")
+	# logger.info(f"[PROTOCOL] finished encrypting message")
 	return res.encode()
 
 
 def decrypt_message(data, private_key):
-	logger.info(f"[PROTOCOL] started decrypting message")
+	# logger.info(f"[PROTOCOL] started decrypting message")
 	data = json.loads(data)
 	encrypted_aes_key = bytes.fromhex(data["aes_key"])
 	iv = bytes.fromhex(data["iv"])
@@ -106,7 +107,7 @@ def decrypt_message(data, private_key):
 	aes_cipher = Cipher(algorithms.AES(aes_key), modes.GCM(iv, tag))
 	decryptor = aes_cipher.decryptor()
 	decrypted_message = decryptor.update(ciphertext) + decryptor.finalize()
-	logger.info(f"[PROTOCOL] finished decrypting message")
+	# logger.info(f"[PROTOCOL] finished decrypting message")
 	return decrypted_message.decode()
 
 # Run validation on script load (optional)

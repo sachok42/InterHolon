@@ -62,12 +62,23 @@ def sql_db_init(cursor):
 	""")
 	cursor.execute("""
 		CREATE TABLE IF NOT EXISTS contacts (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			id1 INTEGER,
 			id2 INTEGER,
 			chat_id INTEGER UNIQUE,
 			FOREIGN KEY (chat_id) REFERENCES chats(id),
 			FOREIGN KEY (id1) REFERENCES users(id),
 			FOREIGN KEY (id2) REFERENCES users(id)
+			)
+		""")
+
+	cursor.execute("""
+		CREATE TABLE IF NOT EXISTS requests (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			sender_id INTEGER,
+			receiver_id INTEGER,
+			FOREIGN KEY (sender_id) REFERENCES users(id),
+			FOREIGN KEY (receiver_id) REFERENCES users(id)
 			)
 		""")
 	# cursor.execute("""

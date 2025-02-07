@@ -67,6 +67,13 @@ class ChatServer(ChatServerUtilities):
 			response = self.load_typo_message(cursor, conn, request_data)
 		elif action == "get_languages":
 			response = self.get_user_languages(conn, request_data)
+		elif action == "get_requests":
+			response = self.get_requests(conn, request_data)
+		elif action == "make_request":
+			response = self.make_request(conn, request_data)
+		elif action == "accept_request":
+			response = self.accept_request(conn, request_data)
+
 		# Add more actions as needed...
 		logger.info(f"[SERVER] sent response: response is {response}")
 		return response
@@ -86,6 +93,7 @@ class ChatServer(ChatServerUtilities):
 		cursor.execute("""
 			INSERT INTO contacts (id1, id2, chat_id) VALUES (?, ?, ?)
 			""", (id1, id2, self.chat_num))
+		conn.commit()
 
 	def load_typo_message(self, cursor, conn, request_data):
 		cursor.execute("""
@@ -108,7 +116,14 @@ class ChatServer(ChatServerUtilities):
 		receiver = self.get_chat_name(conn, message[2])
 		timestamp = message[3]
 
-		response = {"receiver": receiver, "content_start": pre_mistake, "content_mistake": wrong_word, "content_end": post_mistake, "timestamp": timestamp, "corrected_word": mistake[1]}
+		response = {
+		"receiver": receiver,
+		"content_start": pre_mistake,
+		"content_mistake": wrong_word,
+		"content_end": post_mistake,
+		"timestamp": timestamp,
+		"corrected_word": mistake[1]
+		}
 
 		return response
 
@@ -187,13 +202,18 @@ class ChatServer(ChatServerUtilities):
 		try:
 			salt = str(random.randint(1, 1e9))
 			# print(f"password is {password}")
-			hashed_password = pyscrypt.hash(password=password.encode('utf-8'), salt=salt.encode('utf-8'), N=1024, r=1, p=1, dkLen=32)
-			cursor.execute("INSERT INTO users (username, hashed_password, salt) VALUES (?, ?, ?)", (username, hashed_password, salt))
+			hashed_password = pyscrypt.hash(password=password.encode('utf-8'),\
+			 salt=salt.encode('utf-8'), N=1024, r=1, p=1, dkLen=32)
+			cursor.execute("""
+				INSERT INTO users (username, hashed_password, salt) VALUES (?, ?, ?)
+				""", (username, hashed_password, salt))
 			logger.info(f"[SERVER] on register languages are {languages}")
 			user_id = cursor.lastrowid
 			cursor.executemany(
 				"INSERT INTO user_languages (user_id, language_id) VALUES (?, ?)",
-				[(user_id, cursor.execute("SELECT id FROM languages WHERE name = ?", (lang,)).fetchone()[0]) for lang in languages]
+				[(user_id, cursor.execute("""
+					SELECT id FROM languages WHERE name = ?
+					""", (lang,)).fetchone()[0]) for lang in languages]
 			)
 			self.users_num += 1
 			self.add_contact_by_id(conn, self.users_num, 1)
@@ -211,7 +231,8 @@ class ChatServer(ChatServerUtilities):
 		if not user_data:
 			return {"status": "error", "message": "Invalid username"}
 
-		if not pyscrypt.hash(password=request_data["password"].encode('utf-8'), salt=salt.encode('utf-8'), N=1024, r=1, p=1, dkLen=32) == hashed_password:
+		if not pyscrypt.hash(password=request_data["password"].encode('utf-8'), \
+		salt=salt.encode('utf-8'), N=1024, r=1, p=1, dkLen=32) == hashed_password:
 			return {"status": "error", "message": "Wrong password"}			
 		
 		return {"status": "success", "message": "Login successful"}
@@ -227,7 +248,9 @@ class ChatServer(ChatServerUtilities):
 			""", (sender_id, receiver_id, receiver_id, sender_id))
 		chat_id = cursor.fetchone()[0]
 
-		cursor.execute("INSERT INTO messages (chat_type, sender_id, receiver_id, content, chat_id) VALUES ('personal', ?, ?, ?, ?)", (sender_id, receiver_id, content, chat_id))
+		cursor.execute("""
+			INSERT INTO messages (chat_type, sender_id, receiver_id, content, chat_id) VALUES ('personal', ?, ?, ?, ?)
+			""", (sender_id, receiver_id, content, chat_id))
 		conn.commit()
 		self.messages_num += 1
 		ID = self.messages_num
@@ -276,6 +299,55 @@ class ChatServer(ChatServerUtilities):
 		request_data["chat_id"] = chat_id
 		return self.send_message(conn, request_data)
 
+	def make_request(self, conn, request_data):
+		logger.info(f"[SERVER] on make_request")
+		cursor = conn.cursor()
+		sender_id = self.get_user_id(conn, request_data["sender"])
+		receiver_id = self.get_user_id(conn, request_data["receiver"])
+		cursor.execute("""
+			INSERT INTO requests (sender_id, receiver_id) VALUES (?, ?)
+			""", (sender_id, receiver_id))
+		conn.commit()
+		return {"status": "success"}
+
+	def get_requests(self, conn, request_data):
+		cursor = conn.cursor()
+		user_id = self.get_user_id(conn, request_data["user"])
+		logger.info(f"[SERVER] on get_requests: user_id is {user_id}")
+		if request_data["mode"] == "incoming":
+			cursor.execute("""
+				SELECT sender_id FROM requests WHERE receiver_id = ?
+				""", (user_id,))
+		else:
+			cursor.execute("""
+				SELECT receiver_id FROM requests WHERE sender_id = ?
+				""", (user_id,))
+		requests = cursor.fetchall()
+		logger.info(f"[SERVER] on get_requests: ids are {requests}")
+		requests = self.replenish_ids_with_usernames(conn, requests)
+		return {"status": "success", "requesters": requests}
+
+	def accept_request(self, conn, request_data):
+		sender_id = self.get_user_id(conn, request_data["sender"])
+		receiver_id = self.get_user_id(conn, request_data["receiver"])
+		logger.info(f"[SERVER] on accept_request: sender id is {sender_id} and receiver id is {receiver_id}")
+		self.add_contact_by_id(conn, sender_id, receiver_id)
+		cursor = conn.cursor()
+		cursor.execute("""
+			DELETE FROM requests WHERE receiver_id = ? AND sender_id = ?
+			""", (receiver_id, sender_id))
+		return {"status": "success"}
+
+	def get_request_data(self, conn, request_data):
+		sender_id = self.get_user_id(conn, request_data["sender"])
+		receiver_id = self.get_user_id(conn, request_data["receiver"])
+		cursor = conn.cursor()
+		cursor.execute("""
+			SELECT id, sender_id, receiver_id FROM requests WHERE sender_id = ? AND receiver_id = ?
+			""", (sender_id, receiver_id))
+		request = cursor.fetchone()
+		return {"status": "success", "username": self.get_user_id(conn, request[1])}
+
 	def analyze_message(self, message):
 		message = Message(message)
 		return message.analyze(self.my_spellchecker)
@@ -307,7 +379,7 @@ class ChatServer(ChatServerUtilities):
 					action = request_data.get("action")
 					response = self.process_request(cursor, conn, action, request_data)
 					message = encrypt_message(json.dumps(response), public_key)
-					logger.info(f"[SERVER] on handle_client: message length is {len(message)}")
+					# logger.info(f"[SERVER] on handle_client: message length is {len(message)}")
 					client_socket.send(message)
 			except Exception as e:
 				print(f"Error: {e}")

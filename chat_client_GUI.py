@@ -13,7 +13,7 @@ class ChatAppGUI(ChatAppLogic):
 		self.chat_list = None
 		self.chat_display = None
 		self.user_input = None
-
+		self.most_recent_id = None
 		self.loading_period = 1
 
 		self.open_login_screen()
@@ -33,7 +33,7 @@ class ChatAppGUI(ChatAppLogic):
 		else:
 			messagebox.showerror("Error", "Username cannot be empty.")
 
-	def switch_mode(self, mode):
+	def switch_chat_mode(self, mode):
 		self.chat_mode = mode
 		self.load_chats()
 
@@ -122,7 +122,7 @@ class ChatAppGUI(ChatAppLogic):
 		mode_selector = ttk.Combobox(mode_frame, values=["Group", "Personal"], state="readonly")
 		mode_selector.pack(side=tk.LEFT)
 		mode_selector.current(0)
-		mode_selector.bind("<<ComboboxSelected>>", lambda e: self.switch_mode(mode_selector.get().lower()))
+		mode_selector.bind("<<ComboboxSelected>>", lambda e: self.switch_chat_mode(mode_selector.get().lower()))
 
 		main_frame = tk.Frame(self.root)
 		main_frame.pack(expand=True, fill=tk.BOTH)
@@ -134,9 +134,10 @@ class ChatAppGUI(ChatAppLogic):
 		display_and_top_bar_frame.pack(expand=True, fill=tk.BOTH, side=tk.RIGHT)
 		top_bar_frame = tk.Frame(display_and_top_bar_frame)
 		top_bar_frame.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
-		tk.Button(top_bar_frame, text="Mistakes", command=self.open_mistakes_window, bg="green", fg="white").grid(column=0, row=0, pady=5, padx=5)
-		tk.Button(top_bar_frame, text="Profile", command=self.open_profile, bg="green", fg="white").grid(column=1, row=0, pady=5, padx=5)
-		tk.Button(top_bar_frame, text="More messages", command=self.load_more, bg="#0078D7", fg="white").grid(column=2, row=0, pady=5, padx=5)
+		tk.Button(top_bar_frame, text="Mistakes", command=self.open_mistakes_window, bg="green", fg="white").grid(column=0, row=0, pady=10, padx=10)
+		tk.Button(top_bar_frame, text="Profile", command=self.open_profile, bg="green", fg="white").grid(column=1, row=0, pady=10, padx=10)
+		tk.Button(top_bar_frame, text="More messages", command=self.load_more, bg="#0078D7", fg="white").grid(column=2, row=0, pady=10, padx=10)
+		tk.Button(top_bar_frame, text="Requests", command=self.open_requests_window, bg="#0078D7", fg="white").grid(column=3, row=0, pady=10, padx=10)
 
 		display_frame = tk.Frame(display_and_top_bar_frame)
 		display_frame.pack(expand=True, fill=tk.BOTH, side=tk.BOTTOM)
@@ -145,12 +146,74 @@ class ChatAppGUI(ChatAppLogic):
 
 		input_frame = tk.Frame(self.root)
 		input_frame.pack(fill=tk.X, padx=5, pady=5)
-		self.user_input = tk.Entry(input_frame, font=("Arial", 14))
+		self.user_input = tk.Entry(input_frame, font=standard_font)
 		self.user_input.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5, pady=5)
 		tk.Button(input_frame, text="Send", command=self.send_message, bg="#0078D7", fg="white").pack(side=tk.RIGHT)
 		
 		self.load_chats()
 		self.root.mainloop()
+
+	def switch_request_mode(self, mode):
+		if mode == "incoming":
+			self.accept_request_button.pack()
+		elif mode == "outgoing":
+			self.accept_request_button.pack_forget()
+		self.requests_mode = mode
+		self.load_requests()
+
+	def load_request_data(self, request):
+		self.chosen_request = request
+		custom_log("nope")
+
+	def make_request(self):
+		name = self.request_input.get()
+		response = self.send_request("make_request", {"sender": self.current_user, "receiver": name})
+		messagebox.showinfo("request result", f"make_request status: {response['status']}")
+
+	def accept_request(self):
+		response = self.send_request("accept_request", {"receiver": self.current_user, "sender": self.chosen_request})
+
+	def open_requests_window(self):
+		self.requests_window = tk.Toplevel(self.root)
+		self.requests_window.title("Requests")
+		self.requests_window.geometry("800x450")
+		
+		mode_selector = ttk.Combobox(self.requests_window, values=["Incoming", "Outgoing"], state="readonly")
+		mode_selector.pack(side=tk.LEFT)
+		mode_selector.current(0)
+		mode_selector.bind("<<ComboboxSelected>>", lambda e: self.switch_request_mode(mode_selector.get().lower()))
+		self.requests_mode = "incoming"
+
+		self.requests_frame = tk.Frame(self.requests_window)
+		self.requests_frame.pack(expand=True, fill=tk.BOTH)
+		self.requests_list = tk.Listbox(self.requests_frame)
+		self.requests_list.pack(side=tk.LEFT)
+
+		self.requests_list.bind("<<ListboxSelect>>", lambda e: self.load_request_data(self.requests_list.get(self.requests_list.curselection())))
+		self.request_display = scrolledtext.ScrolledText(self.requests_frame, state=tk.DISABLED, wrap=tk.WORD)
+		self.request_display.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH, padx=5, pady=5)
+		self.request_input = tk.Entry(self.requests_window, font=standard_font)
+		self.request_input.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5, pady=5)
+		self.send_request_button = tk.Button(self.requests_window, text="Send request", command=self.make_request, bg="#0078D7", fg="white")
+		self.send_request_button.pack(side=tk.TOP)
+		self.accept_request_button = tk.Button(self.requests_window, text="Accept request", command=self.accept_request, bg="#0078D7", fg="white")
+		
+		self.load_requests()
+
+	def open_group_creation_window(self):
+		self.groups_window = tk.Toplevel(self.root)
+		self.groups_window.title("Creating a group")
+		self.groups_window.geometry("800x450")
+
+		self.group_entry = tk.Entry(self.groups_window, font=standard_font)
+
+
+	def load_requests(self):
+		self.requests_list.delete(0, tk.END)
+		response = self.send_request("get_requests", {"user": self.current_user, "mode": self.requests_mode})
+		requests = response.get("requesters", [])
+		requests_names = [request[0] for request in requests] # names
+		self.requests_list.insert(tk.END, *requests_names)
 
 	def open_mistakes_window(self):
 		self.mistakes_window = tk.Toplevel(self.root)
@@ -166,7 +229,7 @@ class ChatAppGUI(ChatAppLogic):
 		self.mistake_display = scrolledtext.ScrolledText(self.mistakes_frame, state=tk.DISABLED, wrap=tk.WORD)
 		self.mistake_display.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH, padx=5, pady=5)
 
-		self.understood_button = tk.Button(self.root, text="Understood", command=self.send_message, padx=5, pady=5).pack
+		self.understood_button = tk.Button(self.mistakes_frame, text="Understood", command=self.send_message, padx=5, pady=5).pack()
 
 		self.load_mistakes()
 
@@ -220,15 +283,15 @@ class ChatAppGUI(ChatAppLogic):
 		self.login_screen.title("Login/Register")
 		self.login_screen.geometry("400x300")
 
-		tk.Label(self.login_screen, text="Login", font=("Arial", 14)).pack(pady=10)
+		tk.Label(self.login_screen, text="Login", font=standard_font).pack(pady=10)
 		self.login_username = tk.Entry(self.login_screen, font=("Arial", 12))
 		self.login_username.pack(pady=5)
-		tk.Label(self.login_screen, text="Password", font=("Arial", 14)).pack(pady=10)
+		tk.Label(self.login_screen, text="Password", font=standard_font).pack(pady=10)
 		self.login_password = tk.Entry(self.login_screen, font=("Arial", 12))
 		self.login_password.pack(pady=5)
 		tk.Button(self.login_screen, text="Login", command=self.login_user).pack(pady=10)
 		
-		tk.Label(self.login_screen, text="Register", font=("Arial", 14)).pack(pady=10)
+		tk.Label(self.login_screen, text="Register", font=standard_font).pack(pady=10)
 		tk.Button(self.login_screen, text="Register", command=self.register_user).pack(pady=10)
 
 		self.login_screen.mainloop()
@@ -242,7 +305,7 @@ class ChatAppGUI(ChatAppLogic):
 		self.profile_screen.title("Profile")
 		self.profile_screen.geometry("400x300")
 
-		tk.Label(self.profile_screen, text=f"Username: {self.current_user}", font=("Arial", 14)).pack(pady=10)
+		tk.Label(self.profile_screen, text=f"Username: {self.current_user}", font=standard_font).pack(pady=10)
 		languages = self.get_languages()
 		language_list = tk.Listbox(self.profile_screen)
 		# tk.END(language)
