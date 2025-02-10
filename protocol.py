@@ -81,6 +81,44 @@ def generate_key():
 	public_key = private_key.public_key()
 	return private_key, public_key
 
+POS_painting = {
+	"CC": "black",
+	"CD": "black",
+	"DT": "black",
+	"EX": "black",
+	"FW": "black",
+	"IN": "black",
+	"JJ": "black",
+	"JJR": "black",
+	"JJS": "black",
+	"LS": "black",
+	"MD": "black",
+	"NN": "blue",
+	"NNS": "blue",
+	"NNP": "blue",
+	"NNPS": "blue",
+	"PDT": "black",
+	"POS": "black",
+	"PRP": "red",
+	"PRP$": "red",
+	"RB": "black",
+	"RBR": "black",
+	"RBS": "black",
+	"RP": "black",
+	"SYM": "black",
+	"TO": "black",
+	"UH": "black",
+	"VB": "black",
+	"VBD": "black",
+	"VBG": "black",
+	"VBN": "black",
+	"VBP": "black",
+	"VBZ": "black",
+	"WDT": "black",
+	"WP": "black",
+	"WP$": "black",
+	"WRB": "black"
+}
 
 def encrypt_message(message, public_key):
 	# logger.info(f"[PROTOCOL] started encrypting message")

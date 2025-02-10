@@ -29,6 +29,7 @@ def sql_db_init(cursor):
 			chat_id INTEGER,
 			sender_id INTEGER,
 			content TEXT,
+			POS_tags TEXT,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (chat_id) REFERENCES groups (id),
 			FOREIGN KEY (chat_type) REFERENCES groups (type),

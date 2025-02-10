@@ -1,3 +1,6 @@
+from textblob import TextBlob
+
+
 class Message:
 	def __init__(self, content, sender=None, timestamp=None, chat=None, receiver=None):
 		self.content = content
@@ -9,6 +12,8 @@ class Message:
 		print(f"started analysis of message {self.content}")
 		mistakes = []
 		words = self.content.split()
+		blob = TextBlob(self.content)
+		tags = ' '.join([tag[1] for tag in blob.tags])
 		print(f"words are {words}")
 		for i in range(len(words)):
 			print(f"i is {i}")
@@ -17,4 +22,4 @@ class Message:
 			if correction != word:
 				mistakes.append({"type": "typo", "word_number": i, "corrected_word": correction})
 		print(f"mistakes are {mistakes}")
-		return mistakes
+		return mistakes, tags

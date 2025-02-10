@@ -80,10 +80,13 @@ class ChatServerUtilities:
 		logger.info(f"[SERVER] started analysing message {ID}")
 		conn = sqlite3.connect("chat_server.db")
 		cursor = conn.cursor()
-		mistakes = message.analyze(self.my_spellchecker)
+		mistakes, tags = message.analyze(self.my_spellchecker)
 		cursor.executemany("""
 			INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word) VALUES (?, ?, ?, ?, ?)
 			""", [(self.get_user_id(conn, message.sender), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
+		cursor.execute("""
+			UPDATE messages SET POS_tags = ?
+			""", (tags,))
 		conn.commit()
 		return
 

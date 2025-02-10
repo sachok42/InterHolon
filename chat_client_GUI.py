@@ -1,5 +1,6 @@
 from chat_client_logic import *
 import time
+from textblob import TextBlob
 
 
 class ChatAppGUI(ChatAppLogic):
@@ -15,6 +16,7 @@ class ChatAppGUI(ChatAppLogic):
 		self.user_input = None
 		self.most_recent_id = None
 		self.loading_period = 1
+		self.tagging = True
 
 		self.open_login_screen()
 
@@ -82,9 +84,23 @@ class ChatAppGUI(ChatAppLogic):
 		self.chat_display.config(state=tk.NORMAL)
 		self.chat_display.delete(1.0, tk.END)
 		messages = self.load_messages(chat_name)
-		for sender, content, timestamp in messages:
+		if self.tagging:
+			for sender, content, timestamp in messages:
+				print(f"Message is {sender}, {content}")
+				self.chat_display.insert(tk.END, f"{sender}: ")
+				blob = TextBlob(content)
+				tags = blob.tags
+				for word, tag in tags:
+					self.chat_display.insert(tk.END, f"{word} ", tag)
+				self.chat_display.insert(tk.END, f"\n{timestamp}\n")
+			for POS in POS_painting:
+				self.chat_display.tag_config(POS, foreground=POS_painting[POS])
+		else:
 			print(f"Message is {sender}, {content}")
-			self.chat_display.insert(tk.END, f"{sender}: {content}\n{timestamp}\n")
+			for sender, content, timestamp in messages:
+				self.chat_display.insert(tk.END, f"{sender}")
+				self.chat_display.insert(tk.END, f": {content}\n")
+				self.chat_display.insert(tk.END, f"{timestamp}\n")
 		self.chat_display.config(state=tk.DISABLED)
 
 	def load_mistake_data(self, mistake_header):
