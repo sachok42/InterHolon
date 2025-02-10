@@ -28,13 +28,11 @@ def sql_db_init(cursor):
 			chat_type TEXT CHECK(chat_type IN ('group', 'personal')),
 			chat_id INTEGER,
 			sender_id INTEGER,
-			receiver_id INTEGER,
 			content TEXT,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (chat_id) REFERENCES groups (id),
 			FOREIGN KEY (chat_type) REFERENCES groups (type),
-			FOREIGN KEY (sender_id) REFERENCES users (id),
-			FOREIGN KEY (receiver_id) REFERENCES users (id)
+			FOREIGN KEY (sender_id) REFERENCES users (id)
 			-- PRIMARY KEY (group_id, id)
 		)
 	""")
@@ -81,12 +79,19 @@ def sql_db_init(cursor):
 			FOREIGN KEY (receiver_id) REFERENCES users(id)
 			)
 		""")
+	cursor.execute("""
+		CREATE TABLE IF NOT EXISTS group_participants (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			group_id INTEGER,
+			user_id INTEGER,
+			FOREIGN KEY (group_id) REFERENCES chats(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+			)
+		""")
 	# cursor.execute("""
 	# 	CREATE INDEX OR IGNORE message_index ON messages (chat_id, id)
 	# 	""")
 
-	for group_name in base_groups:
-		cursor.execute("INSERT OR IGNORE INTO chats (name) VALUES (?)", (group_name,))
 	for language_name in languages:
 		cursor.execute("INSERT OR IGNORE INTO languages (name) VALUES (?)", (language_name,))
 

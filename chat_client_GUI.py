@@ -40,10 +40,12 @@ class ChatAppGUI(ChatAppLogic):
 	def load_chats(self):
 		self.chat_list.delete(0, tk.END)
 		if self.chat_mode == "group":
-			groups = base_groups or ["No groups available."]
+			response = self.send_request("get_groups")
+			groups = response.get("groups")
+			groups = groups or ["No groups available."]
 			self.chat_list.insert(tk.END, *groups)
 		elif self.chat_mode == "personal":
-			response = self.send_request("get_users", {"user1": self.current_user})
+			response = self.send_request("get_users")
 			users = [user for user in response.get("users", []) if user != self.current_user]
 			logger.info(f"[CLIENT] loading contacts, users are {users}")
 			self.chat_list.insert(tk.END, *users or ["No users available for personal chat."])
@@ -138,6 +140,7 @@ class ChatAppGUI(ChatAppLogic):
 		tk.Button(top_bar_frame, text="Profile", command=self.open_profile, bg="green", fg="white").grid(column=1, row=0, pady=10, padx=10)
 		tk.Button(top_bar_frame, text="More messages", command=self.load_more, bg="#0078D7", fg="white").grid(column=2, row=0, pady=10, padx=10)
 		tk.Button(top_bar_frame, text="Requests", command=self.open_requests_window, bg="#0078D7", fg="white").grid(column=3, row=0, pady=10, padx=10)
+		tk.Button(top_bar_frame, text="Make group", command=self.open_group_creation_window, bg="blue", fg="white").grid(column=4, row=0, pady=10, padx=10)
 
 		display_frame = tk.Frame(display_and_top_bar_frame)
 		display_frame.pack(expand=True, fill=tk.BOTH, side=tk.BOTTOM)
@@ -163,7 +166,7 @@ class ChatAppGUI(ChatAppLogic):
 
 	def load_request_data(self, request):
 		self.chosen_request = request
-		custom_log("nope")
+		self.send_request("load_request", {"requester": request})
 
 	def make_request(self):
 		name = self.request_input.get()
@@ -200,13 +203,30 @@ class ChatAppGUI(ChatAppLogic):
 		
 		self.load_requests()
 
+
 	def open_group_creation_window(self):
+		def make_group():
+			name = self.group_entry.get().strip()
+			selected_users = [self.users_list.get(i) for i in self.users_list.curselection()]
+			messagebox.showinfo("group status", self.send_request("create_group", {"name": name, "users": selected_users}))
+			self.groups_window.destroy()
+
 		self.groups_window = tk.Toplevel(self.root)
 		self.groups_window.title("Creating a group")
 		self.groups_window.geometry("800x450")
 
+		tk.Label(self.groups_window, text="group_name")
 		self.group_entry = tk.Entry(self.groups_window, font=standard_font)
+		self.group_entry.pack()
 
+		self.users_list = tk.Listbox(self.groups_window, selectmode=tk.MULTIPLE)
+		self.users_list.pack()
+
+		response = self.send_request("get_users")
+		self.users_list.insert(tk.END, *response["users"])
+
+		self.group_submit_button = tk.Button(self.groups_window, text="Submit", command=make_group, padx=5, pady=5)
+		self.group_submit_button.pack()
 
 	def load_requests(self):
 		self.requests_list.delete(0, tk.END)

@@ -34,6 +34,11 @@ class ChatServerUtilities:
 		result = [(self.get_username(cursor, element[0]), *element[1:]) for element in elements]
 		return result
 
+	def replenish_usernames_with_ids_flat(self, conn, users):
+		cursor = conn.cursor()
+		result = [self.get_user_id(conn, user) for user in users]
+		return result
+
 	def replenish_ids_with_usernames_flat(self, conn, elements):
 		cursor = conn.cursor()
 		result = [self.get_username(cursor, element) for element in elements]
@@ -49,6 +54,13 @@ class ChatServerUtilities:
 		cursor.execute("""
 			SELECT name FROM chats WHERE id = ?
 			""", (ID,))
+		return cursor.fetchone()[0]
+
+	def get_chat_id(self, conn, name):
+		cursor = conn.cursor()
+		cursor.execute("""
+			SELECT id FROM chats WHERE name = ?
+			""", (name,))
 		return cursor.fetchone()[0]
 		
 	def get_messages(self, conn, group_id, last_id=1e6):
@@ -75,3 +87,7 @@ class ChatServerUtilities:
 		conn.commit()
 		return
 
+	def replenish_ids_with_chats_flat(self, conn, elements):
+		cursor = conn.cursor()
+		result = [self.get_chat_name(conn, element) for element in elements]
+		return result

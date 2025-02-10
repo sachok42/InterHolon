@@ -31,6 +31,9 @@ class ChatServer(ChatServerUtilities):
 			cursor = conn.cursor()
 			sql_db_init(cursor)
 
+			for group_name in base_groups:
+				cursor.execute("INSERT OR IGNORE INTO chats (name) VALUES (?)", (group_name,))
+
 			self.users_num = cursor.execute("""
 				SELECT COUNT(*) FROM users
 				""").fetchone()[0]
@@ -45,37 +48,58 @@ class ChatServer(ChatServerUtilities):
 			conn.commit()
 
 	def process_request(self, cursor, conn, action, request_data):
-		response = {"status": "error", "message": "Invalid action"}
 		logger.info(f"[SERVER] received request: action {action}, data {request_data}")
-		if action == "register":
-			response = self.register_user(cursor, conn, request_data)
-		elif action == "login":
-			response = self.login_user(cursor, request_data)
-		elif action == "send_group_message":
-			response = self.send_group_message(cursor, conn, request_data)
-		elif action == "send_personal_message":
-			response = self.send_personal_message(cursor, conn, request_data)
-		elif action == "get_group_messages":
-			response = self.get_group_messages(cursor, conn, request_data)
-		elif action == "get_personal_messages":
-			response = self.get_personal_messages(cursor, conn, request_data)
-		elif action == "get_users":
-			response = self.get_users(cursor, conn, request_data)
-		elif action == "get_mistakes":
-			response = self.get_mistakes(cursor, conn, request_data)
-		elif action == "load_typo_message":
-			response = self.load_typo_message(cursor, conn, request_data)
-		elif action == "get_languages":
-			response = self.get_user_languages(conn, request_data)
-		elif action == "get_requests":
-			response = self.get_requests(conn, request_data)
-		elif action == "make_request":
-			response = self.make_request(conn, request_data)
-		elif action == "accept_request":
-			response = self.accept_request(conn, request_data)
+		try:
+			response = {"status": "error", "message": "Invalid action"}
+			match action:
+				case "register":
+					response = self.register_user(cursor, conn, request_data)
+				case "login":
+					response = self.login_user(cursor, request_data)
+				case "send_group_message":
+					response = self.send_group_message(cursor, conn, request_data)
+				case "send_personal_message":
+					response = self.send_personal_message(cursor, conn, request_data)
+				case "get_group_messages":
+					response = self.get_group_messages(cursor, conn, request_data)
+				case "get_personal_messages":
+					response = self.get_personal_messages(cursor, conn, request_data)
+				case "get_users":
+					response = self.get_users(cursor, conn, request_data)
+				case "get_mistakes":
+					response = self.get_mistakes(cursor, conn, request_data)
+				case "load_typo_message":
+					response = self.load_typo_message(cursor, conn, request_data)
+				case "get_languages":
+					response = self.get_user_languages(conn, request_data)
+				case "get_requests":
+					response = self.get_requests(conn, request_data)
+				case "make_request":
+					response = self.make_request(conn, request_data)
+				case "accept_request":
+					response = self.accept_request(conn, request_data)
+				case "get_groups":
+					response = self.get_groups(conn, request_data)
+				case "create_group":
+					response = self.create_group(conn, request_data)
+		except Exception as e:
+			response = {"status": "error", "message": "unknown error"}
+			error_logger.error(f"[SERVER] error: {e}")
 
 		# Add more actions as needed...
 		logger.info(f"[SERVER] sent response: response is {response}")
+		return response
+
+
+	def get_groups(self, conn, request_data):
+		user_id = self.get_user_id(conn, request_data["user"])
+		cursor = conn.cursor()
+		cursor.execute("""
+			SELECT group_id FROM group_participants WHERE user_id = ?
+			""", (user_id,))
+		groups_ids = self.flatten_array(cursor.fetchall())
+		groups = self.replenish_ids_with_chats_flat(conn, groups_ids)
+		response = {"status": "success", "groups": groups}
 		return response
 
 	def add_chat(self, conn, chat_name, chat_type='group'):
@@ -152,7 +176,7 @@ class ChatServer(ChatServerUtilities):
 
 	def get_group_messages(self, cursor, conn, request_data):
 		logger.info(f"[SERVER] on get_group_messages: request_data is {request_data}")
-		cursor = conn.cursor()	
+		cursor = conn.cursor()
 		cursor.execute("SELECT id FROM chats WHERE name = ?", (request_data["group_name"],))
 		group_id = cursor.fetchone()[0]
 
@@ -175,20 +199,27 @@ class ChatServer(ChatServerUtilities):
 
 	def get_users(self, cursor, conn, request_data):
 		logger.info("[SERVER] started gathering users")
-		ID = self.get_user_id(conn, request_data["user1"])
+		ID = self.get_user_id(conn, request_data["user"])
 		cursor.execute("""
 			SELECT id1, id2 FROM contacts WHERE id1 = ? OR id2 = ?
 			""", (ID, ID))
 		# logger.info(f"[SERVER] users are {users}")
 		users = cursor.fetchall()
 		logger.info(f"[SERVER] on get_users: users are {users}")
-		users = self.flatten_array(users) # flattened the list
+		users = list(set(self.flatten_array(users))) # flattened the list
 		logger.info(f"[SERVER] on get_users: users are {users}")
 		users = self.replenish_ids_with_usernames_flat(conn, users)
 		logger.info(f"[SERVER] on get_users: users are {users}")
 		# logger.info(f"[SERVER] flatted users to {users}")
 		response = {"status": "sucess", "users": users}
 		return response
+
+	def add_group_member_ids(self, conn, group_id, user_id):
+		cursor = conn.cursor()
+		cursor.execute("""
+			INSERT INTO group_participants (group_id, user_id) VALUES (?, ?)
+			""", (group_id, user_id))
+		return {"status": "success", "message": f"user id {user_id} added to group {group_id}"}
 
 	def register_user(self, cursor, conn, request_data):
 		logger.info(f"[SERVER] on register_user: user is {request_data['username']}")
@@ -217,6 +248,8 @@ class ChatServer(ChatServerUtilities):
 			)
 			self.users_num += 1
 			self.add_contact_by_id(conn, self.users_num, 1)
+			for group in base_groups:
+				self.add_group_member_ids(conn, self.users_num, self.get_chat_id(conn, group))
 			conn.commit()
 			return {"status": "success", "message": "Registration successful"}
 		except sqlite3.IntegrityError:
@@ -237,25 +270,21 @@ class ChatServer(ChatServerUtilities):
 		
 		return {"status": "success", "message": "Login successful"}
 
-	def send_message(self, conn, request_data):
+	def send_message(self, conn, request_data, mode):
 		logger.info(f"[SERVER] on send_message message is {request_data}")
 		content = request_data.get("content")
 		sender_id = self.get_user_id(conn, request_data.get("sender"))
-		receiver_id = self.get_user_id(conn, request_data.get("receiver"))
+		chat_id = request_data["chat_id"]
+
 		cursor = conn.cursor()
 		cursor.execute("""
-			SELECT chat_id FROM contacts WHERE id1 = ? AND id2 = ? OR id1 = ? AND id2 = ?
-			""", (sender_id, receiver_id, receiver_id, sender_id))
-		chat_id = cursor.fetchone()[0]
-
-		cursor.execute("""
-			INSERT INTO messages (chat_type, sender_id, receiver_id, content, chat_id) VALUES ('personal', ?, ?, ?, ?)
-			""", (sender_id, receiver_id, content, chat_id))
+			INSERT INTO messages (chat_type, sender_id, content, chat_id) VALUES (?, ?, ?, ?)
+			""", (mode, sender_id, content, chat_id))
 		conn.commit()
 		self.messages_num += 1
 		ID = self.messages_num
 		logger.info(f"ID is {ID}")
-		message = Message(content, request_data["sender"], None, None, request_data["receiver"])
+		message = Message(content, request_data["sender"], None, request_data.get("chat_id"))
 		# mistakes = self.analyze_message(content)
 		mistakes_handler = threading.Thread(target=self.analyze_message_autonomous, args=(message, ID))
 		mistakes_handler.start()
@@ -268,21 +297,10 @@ class ChatServer(ChatServerUtilities):
 		sender_id = self.get_user_id(conn, sender)
 		cursor.execute("SELECT id FROM chats WHERE name = ?", (group_name,))
 		group_id = cursor.fetchone()[0]
+		request_data["chat_id"] = group_id
 		logger.info(f"[SERVER] on send_group_message: sending a message to group id {group_id}")
 		if group_id:
-			cursor.execute("""
-				INSERT INTO messages (chat_type, chat_id, sender_id, content)
-				VALUES ('group', ?, ?, ?)
-			""", (group_id, sender_id, content))
-			conn.commit()
-			cursor.execute("SELECT COUNT(*) FROM messages")
-			ID = cursor.fetchone()[0]
-			# mistakes = self.analyze_message(content)
-
-			message = Message(content, sender, None, group_id, None)
-			mistakes_handler = threading.Thread(target=self.analyze_message_autonomous, args=(message, ID))
-			mistakes_handler.start()
-
+			return self.send_message(conn, request_data, "group")
 			return {"status": "success", "message": "message sent"}
 
 		return {"status": "error", "message": "Group does not exist."}
@@ -297,7 +315,7 @@ class ChatServer(ChatServerUtilities):
 			""", (sender_id, receiver_id, receiver_id, sender_id))
 		chat_id = cursor.fetchone()[0]
 		request_data["chat_id"] = chat_id
-		return self.send_message(conn, request_data)
+		return self.send_message(conn, request_data, "personal")
 
 	def make_request(self, conn, request_data):
 		logger.info(f"[SERVER] on make_request")
@@ -336,6 +354,7 @@ class ChatServer(ChatServerUtilities):
 		cursor.execute("""
 			DELETE FROM requests WHERE receiver_id = ? AND sender_id = ?
 			""", (receiver_id, sender_id))
+		conn.commit()
 		return {"status": "success"}
 
 	def get_request_data(self, conn, request_data):
@@ -352,6 +371,29 @@ class ChatServer(ChatServerUtilities):
 		message = Message(message)
 		return message.analyze(self.my_spellchecker)
 
+	def create_group_collective(self, conn, group_id):
+		cursor = conn.cursor()
+		cursor.execute("""
+			SELECT id FROM users
+			""")
+		ids = self.flatten_array(cursor.fetchall())
+		self.create_group_by_ids(conn, group_name, ids)
+
+	def create_group(self, conn, request_data):
+		user_ids = self.replenish_usernames_with_ids_flat(conn, request_data["users"])
+		group_name = request_data["name"]
+		return self.create_group_by_ids(conn, group_name, user_ids)
+
+	def create_group_by_ids(self, conn, group_name, participants_ids):
+		self.add_chat(conn, group_name)
+		group_id = self.get_chat_id(conn, group_name)
+		cursor = conn.cursor()
+		cursor.executemany("""
+			INSERT INTO group_participants (group_id, user_id) VALUES (?, ?)
+			""", [(group_id, user_id) for user_id in participants_ids])
+		conn.commit()
+		return {"status": "success", "message": f"group {group_name} created"}
+
 	def handle_client(self, client_socket):
 		private_key, public_key = generate_key()
 		public_pem = public_key.public_bytes(
@@ -363,6 +405,7 @@ class ChatServer(ChatServerUtilities):
 		received_data = client_socket.recv(basic_buffer_size)
 		logger.info(f"[SERVER] got pem starting {received_data.hex()[:10]}")
 		public_key = serialization.load_pem_public_key(received_data)
+		current_user = None
 		with sqlite3.connect("chat_server.db") as conn:
 			cursor = conn.cursor()
 			try:
@@ -377,7 +420,14 @@ class ChatServer(ChatServerUtilities):
 						client_socket.send(encrypt_message(json.dumps({"status": "error", "message": "Invalid JSON"}), public_key))
 						continue
 					action = request_data.get("action")
-					response = self.process_request(cursor, conn, action, request_data)
+					if action == "login":
+						response = self.process_request(cursor, conn, action, request_data)
+						if response["status"] == "success":
+							current_user = request_data["username"]
+					elif action != "register" and request_data["user"] != current_user:
+						response = {"status": "error", "problem": "unchecked user"}
+					else:
+						response = self.process_request(cursor, conn, action, request_data)
 					message = encrypt_message(json.dumps(response), public_key)
 					# logger.info(f"[SERVER] on handle_client: message length is {len(message)}")
 					client_socket.send(message)

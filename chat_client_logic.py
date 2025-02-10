@@ -34,6 +34,7 @@ class ChatAppLogic:
 	def send_request(self, action, data={}):
 		try:
 			# self.client_socket.connect(self.SERVER_ADDRESS)
+			data["user"] = self.current_user
 			request = {"action": action, **data}
 			message = encrypt_message(json.dumps(request), self.public_key)
 			# custom_log(f"[CLIENT] encrypted_message type is {type(message)}")
