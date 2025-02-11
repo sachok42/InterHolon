@@ -82,43 +82,57 @@ def generate_key():
 	return private_key, public_key
 
 POS_painting = {
-	"CC": "black",
-	"CD": "black",
-	"DT": "black",
-	"EX": "black",
-	"FW": "black",
-	"IN": "black",
-	"JJ": "black",
-	"JJR": "black",
-	"JJS": "black",
-	"LS": "black",
+	"CC": "#7f7f7f",
+	"CD": "#d62738",
+	"DT": "#9467bd",
+	"EX": "#ff9896",
+	"FW": "#555555",
+	"IN": "#17becf",
+	"JJ": "#ff7f0e",
+	"JJR": "#ffbb78",
+	"JJS": "#d62728",
+	"LS": "#17becf",
 	"MD": "black",
-	"NN": "blue",
-	"NNS": "blue",
-	"NNP": "blue",
-	"NNPS": "blue",
-	"PDT": "black",
-	"POS": "black",
-	"PRP": "red",
-	"PRP$": "red",
-	"RB": "black",
-	"RBR": "black",
-	"RBS": "black",
-	"RP": "black",
-	"SYM": "black",
-	"TO": "black",
-	"UH": "black",
-	"VB": "black",
-	"VBD": "black",
-	"VBG": "black",
-	"VBN": "black",
-	"VBP": "black",
-	"VBZ": "black",
-	"WDT": "black",
-	"WP": "black",
-	"WP$": "black",
+	"NN": "#1f77b4",
+	"NNS": "#aec7e8",
+	"NNP": "#2ca02c",
+	"NNPS": "#98df8a",
+	"PDT": "#c5b0d5",
+	"POS": "#e7ba52",
+	"PRP": "#e377c2",
+	"PRP$": "#f7b6d2",
+	"RB": "#ffbb78",
+	"RBR": "#ffcc00",
+	"RBS": "#ffeb3b",
+	"RP": "#8c564b",
+	"SYM": "#000000",
+	"TO": "#bcbd22",
+	"UH": "#c49c94",
+	"VB": "#2ca02c",
+	"VBD": "#98df8a",
+	"VBG": "#d62728",
+	"VBN": "#ff9896",
+	"VBP": "#9467bd",
+	"VBZ": "#c5b0d5",
+	"WDT": "#8c564b",
+	"WP": "#8c564b",
+	"WP$": "#c49c94",
 	"WRB": "black"
 }
+
+def send_message_by_parts(used_socket, encoded_message):
+	index = 0
+	while index + basic_buffer_size - 8 < len(encoded_message):
+		used_socket.send(b"0" + encoded_message[index: index + basic_buffer_size])
+		index += basic_buffer_size - 8
+		if_accepted = used_socket.recv(basic_buffer_size)
+		if if_accepted not in ("more", "enough"):
+			logger.error(f"[PROTOCOL] error on send_message_by_parts feedback")
+	used_socket.send(b"1" + encoded_message[index:])
+
+def get_message_by_parts(used_socket):
+	result = b""
+
 
 def encrypt_message(message, public_key):
 	# logger.info(f"[PROTOCOL] started encrypting message")
