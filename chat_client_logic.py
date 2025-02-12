@@ -38,6 +38,7 @@ class ChatAppLogic:
 			request = {"action": action, **data}
 			message = encrypt_message(json.dumps(request), self.public_key)
 			# custom_log(f"[CLIENT] encrypted_message type is {type(message)}")
+			
 			self.client_socket.send(message)
 			logger.info(f"[CLIENT] sent request: action is {action} data is {data}")
 			encrypted_message = self.client_socket.recv(basic_buffer_size)

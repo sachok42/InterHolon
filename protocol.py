@@ -8,8 +8,8 @@ import json
 import datetime
 
 logger = logging.getLogger(__name__)
-# logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
-# logging.basicConfig(filename='error_log.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename='error_log.log', encoding='utf-8', level=logging.DEBUG)
 
 standard_font = ("Arial", 14)
 
@@ -23,10 +23,10 @@ def setup_logger(logger_name, log_file, level=logging.DEBUG):
 
     l.setLevel(level)
     l.addHandler(fileHandler)
-    l.addHandler(streamHandler)    
+    # l.addHandler(streamHandler)    
 
-setup_logger('chatting_log', 'chatting_log.log')
-setup_logger('error_log', 'error_log.log')
+# setup_logger('chatting_log', 'chatting_log.log')
+# setup_logger('error_log', 'error_log.log')
 logger = logging.getLogger('chatting_log')
 error_logger = logging.getLogger('error_log')
 
@@ -92,7 +92,7 @@ POS_painting = {
 	"JJR": "#ffbb78",
 	"JJS": "#d62728",
 	"LS": "#17becf",
-	"MD": "black",
+	"MD": "#1f77b4",
 	"NN": "#1f77b4",
 	"NNS": "#aec7e8",
 	"NNP": "#2ca02c",
@@ -117,21 +117,31 @@ POS_painting = {
 	"WDT": "#8c564b",
 	"WP": "#8c564b",
 	"WP$": "#c49c94",
-	"WRB": "black"
+	"WRB": "#8c564b"
 }
 
-def send_message_by_parts(used_socket, encoded_message):
+def send_message_by_parts(used_socket, encoded_message, private_key):
 	index = 0
 	while index + basic_buffer_size - 8 < len(encoded_message):
-		used_socket.send(b"0" + encoded_message[index: index + basic_buffer_size])
+		used_socket.send(b"0" + encoded_message[index: index + basic_buffer_size - 8])
 		index += basic_buffer_size - 8
-		if_accepted = used_socket.recv(basic_buffer_size)
-		if if_accepted not in ("more", "enough"):
+		if_accepted = decrypt_message(used_socket.recv(basic_buffer_size), private_key)
+		logger.info(f"[PROTOCOL] on send_message_by_parts: sent chunk number {index / (basic_buffer_size - 8)}")
+		if if_accepted != "more":
 			logger.error(f"[PROTOCOL] error on send_message_by_parts feedback")
 	used_socket.send(b"1" + encoded_message[index:])
 
-def get_message_by_parts(used_socket):
+def get_message_by_parts(used_socket, public_key):
 	result = b""
+
+	while True:
+		data = used_socket.recv(basic_buffer_size)
+		result = result + data[1:]
+		if data[0] == b"1":
+			break
+		socket.send(encrypt_message("more", public_key))
+
+	return result
 
 
 def encrypt_message(message, public_key):

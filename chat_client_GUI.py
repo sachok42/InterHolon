@@ -89,9 +89,11 @@ class ChatAppGUI(ChatAppLogic):
 				print(f"Message is {sender}, {content}")
 				self.chat_display.insert(tk.END, f"{sender}: ")
 				blob = TextBlob(content)
-				tags = blob.tags
-				for word, tag in tags:
-					self.chat_display.insert(tk.END, f"{word} ", tag)
+				parsed_text = blob.parse().split()[0]
+				print("parsed_text is", parsed_text)
+				for word, POS_tag, something1, something2 in parsed_text:
+					# word, POS_tag, something1, something2 = piece.split("/")
+					self.chat_display.insert(tk.END, f"{word} ", POS_tag)
 				self.chat_display.insert(tk.END, f"\n{timestamp}\n")
 			for POS in POS_painting:
 				self.chat_display.tag_config(POS, foreground=POS_painting[POS])
