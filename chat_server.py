@@ -408,7 +408,7 @@ class ChatServer(ChatServerUtilities):
             cursor = conn.cursor()
             try:
                 while True:
-                    request = client_socket.recv(basic_buffer_size)
+                    request = get_message_by_parts(client_socket, public_key)
                     request = decrypt_message(request, private_key)
                     if not request:
                         break
@@ -428,7 +428,7 @@ class ChatServer(ChatServerUtilities):
                         response = self.process_request(cursor, conn, action, request_data)
                     message = encrypt_message(json.dumps(response), public_key)
                     # logger.info(f"[SERVER] on handle_client: message length is {len(message)}")
-                    client_socket.send(message)
+                    send_message_by_parts(client_socket, message, private_key)
             except Exception as e:
                 print(f"Error: {e}")
             finally:

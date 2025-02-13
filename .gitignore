@@ -10,3 +10,5 @@ __pycache__/sql_db_init.cpython-311.pyc
 __pycache__/Message.cpython-311.pyc
 __pycache__/protocol.cpython-311.pyc
 __pycache__/protocol.cpython-311.pyc
+chat_server.db
+*.pyc
