@@ -117,7 +117,8 @@ POS_painting = {
 	"WDT": "#8c564b",
 	"WP": "#8c564b",
 	"WP$": "#c49c94",
-	"WRB": "#8c564b"
+	"WRB": "#8c564b",
+	"PNC": "black"
 }
 
 def encrypt_message(message, public_key):
@@ -179,10 +180,7 @@ def send_message_by_parts(used_socket, encoded_message, private_key):
 		logger.info(f"[PROTOCOL] on send_message_by_parts: sent chunk starting {data[0]}")
 		used_socket.send(data)
 		index += basic_buffer_size - 8
-		if_accepted = decrypt_message(used_socket.recv(basic_buffer_size), private_key)
 		logger.info(f"[PROTOCOL] on send_message_by_parts: sent chunk number {index / (basic_buffer_size - 8)}")
-		if if_accepted != "more":
-			logger.error(f"[PROTOCOL] error on send_message_by_parts feedback")
 	data = b"1" + encoded_message[index:]
 	logger.info(f"[PROTOCOL] on send_message_by_parts: final chunk starting {data[0]}")
 	used_socket.send(data)
@@ -197,7 +195,6 @@ def get_message_by_parts(used_socket, public_key):
 		result = result + data[1:]
 		if data[0] == 49:
 			break
-		used_socket.send(encrypt_message("more", public_key))
 
 	logger.info(f"[PROTOCOL] on get_message_by_parts: final size of the message is {len(result)}")
 	return result

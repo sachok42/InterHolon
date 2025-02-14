@@ -56,6 +56,9 @@ class ChatAppGUI(ChatAppLogic):
 		time.sleep(self.loading_period)
 		self.load_chats()
 
+	def load_updates(self):
+		response = self.send_request("load_updates", {"chat": self.current_user})
+
 	def send_message(self):
 		try:
 			recipient = self.chat_list.get(self.chat_list.curselection())
@@ -94,7 +97,8 @@ class ChatAppGUI(ChatAppLogic):
 				for sentence in parsed_text:
 					for word, POS_tag, something1, something2 in sentence:
 						# word, POS_tag, something1, something2 = piece.split("/")
-						self.chat_display.insert(tk.END, f"{word} ", POS_tag)
+						print(word)
+						self.chat_display.insert(tk.END, f'{word} ', POS_tag if POS_tag in POS_painting else "PNC")
 				self.chat_display.insert(tk.END, f"\n{timestamp}\n")
 			for POS in POS_painting:
 				self.chat_display.tag_config(POS, foreground=POS_painting[POS])
@@ -334,10 +338,6 @@ class ChatAppGUI(ChatAppLogic):
 		tk.Button(self.login_screen, text="Register", command=self.register_user).pack(pady=10)
 
 		self.login_screen.mainloop()
-
-	def get_languages(self):
-		response = self.send_request("get_languages", {"user1": self.current_user})
-		return response["languages"]
 
 	def open_profile(self):
 		self.profile_screen = tk.Toplevel(self.root)

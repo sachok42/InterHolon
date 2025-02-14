@@ -31,6 +31,10 @@ class ChatAppLogic:
 		for language in languages:
 			lang_list.insert(tk.END, language)
 
+	def get_languages(self):
+		response = self.send_request("get_languages", {"user1": self.current_user})
+		return response["languages"]
+
 	def send_request(self, action, data={}):
 		try:
 			# self.client_socket.connect(self.SERVER_ADDRESS)
@@ -50,7 +54,7 @@ class ChatAppLogic:
 			messagebox.showerror("Connection Error", f"An error occurred: {e}")
 			return {"status": "error", "message": str(e)}
 
-	def load_messages(self, chat_name, last_id_usage=False):
+	def load_messages(self, chat_name, last_id_usage=False, update=False):
 		logger.info(f"[CLIENT] on_load_messages: from chat {chat_name}")
 		action = "get_group_messages" if self.chat_mode == "group" else "get_personal_messages"
 		data = {
@@ -60,7 +64,8 @@ class ChatAppLogic:
 		}
 		
 		response = self.send_request(action, data)
-		self.last_id = response["last_id"]
+		if not update:
+			self.last_id = response["last_id"]
 		logger.info(f"[CLIENT] on_load_messages: last_id is {self.last_id}")
 		if response["status"] == "success":
 			return response["messages"]

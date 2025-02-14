@@ -294,7 +294,7 @@ class ChatServer(ChatServerUtilities):
 
     def send_group_message(self, cursor, conn, request_data):
         group_name = request_data.get("group_name")
-        sender = request_data.get("sender")
+        sender = request_data.get("user")
         content = request_data.get("content")
         sender_id = self.get_user_id(conn, sender)
         cursor.execute("SELECT id FROM chats WHERE name = ?", (group_name,))
@@ -310,7 +310,7 @@ class ChatServer(ChatServerUtilities):
     def send_personal_message(self, cursor, conn, request_data):
         logger.info(f"[SERVER] on send_personal_message message is {request_data}")
         content = request_data.get("content")
-        sender_id = self.get_user_id(conn, request_data.get("sender"))
+        sender_id = self.get_user_id(conn, request_data.get("user"))
         receiver_id = self.get_user_id(conn, request_data.get("receiver"))
         cursor.execute("""
             SELECT chat_id FROM contacts WHERE id1 = ? AND id2 = ? OR id1 = ? AND id2 = ?
