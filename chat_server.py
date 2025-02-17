@@ -15,6 +15,7 @@ from ChatServerUtilities import *
 class ChatServer(ChatServerUtilities):
     def __init__(self, host="0.0.0.0", port=12345):
         logger.info("\n\nServer on")
+        super(ChatServer, self).__init__()
         self.host = host
         self.port = port
 
@@ -277,16 +278,17 @@ class ChatServer(ChatServerUtilities):
         content = request_data.get("content")
         sender_id = self.get_user_id(conn, request_data.get("sender"))
         chat_id = request_data["chat_id"]
+        language_id = self.get_language_id(conn, request_data["language"])
 
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO messages (chat_type, sender_id, content, chat_id) VALUES (?, ?, ?, ?)
-            """, (mode, sender_id, content, chat_id))
+            INSERT INTO messages (chat_type, sender_id, content, chat_id, language_id) VALUES (?, ?, ?, ?, ?)
+            """, (mode, sender_id, content, chat_id, language_id))
         conn.commit()
         self.messages_num += 1
         ID = self.messages_num
         logger.info(f"ID is {ID}")
-        message = Message(content, request_data["sender"], None, request_data.get("chat_id"))
+        message = Message(content, request_data["sender"], request_data.get("chat_id"), request_data["language"])
         # mistakes = self.analyze_message(content)
         mistakes_handler = threading.Thread(target=self.analyze_message_autonomous, args=(message, ID))
         mistakes_handler.start()
@@ -322,7 +324,7 @@ class ChatServer(ChatServerUtilities):
     def make_request(self, conn, request_data):
         logger.info(f"[SERVER] on make_request")
         cursor = conn.cursor()
-        sender_id = self.get_user_id(conn, request_data["sender"])
+        sender_id = self.get_user_id(conn, request_data["user"])
         receiver_id = self.get_user_id(conn, request_data["receiver"])
         cursor.execute("""
             INSERT INTO requests (sender_id, receiver_id) VALUES (?, ?)

@@ -5,7 +5,7 @@ import json
 from protocol import *
 import logging
 import random
-
+from POS_tagger import POS_tagger
 
 class ChatAppLogic:
 	SERVER_ADDRESS = ("127.0.0.1", 12345)  # Adjust as needed
@@ -27,9 +27,16 @@ class ChatAppLogic:
 		self.public_key = serialization.load_pem_public_key(received_data)
 		# logger.info(f"[CLIENT] my ")
 
+		self.POS_taggers = {}
+
 	def populate_language_list(self, lang_list):
 		for language in languages:
 			lang_list.insert(tk.END, language)
+
+	def tag_text(self, language, text):
+		if language not in self.POS_taggers:
+			self.POS_taggers[language] = POS_tagger(language)
+		return self.POS_taggers[language].tag_text(text)
 
 	def get_languages(self):
 		response = self.send_request("get_languages", {"user1": self.current_user})

@@ -30,10 +30,12 @@ def sql_db_init(cursor):
 			sender_id INTEGER,
 			content TEXT,
 			POS_tags TEXT,
+			language_id INTEGER,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (chat_id) REFERENCES groups (id),
 			FOREIGN KEY (chat_type) REFERENCES groups (type),
 			FOREIGN KEY (sender_id) REFERENCES users (id)
+			FOREIGN KEY (language_id) REFERENCES languages (id)
 			-- PRIMARY KEY (group_id, id)
 		)
 	""")

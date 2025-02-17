@@ -1,6 +1,7 @@
 from chat_client_logic import *
 import time
 from textblob import TextBlob
+import re
 
 
 class ChatAppGUI(ChatAppLogic):
@@ -62,7 +63,7 @@ class ChatAppGUI(ChatAppLogic):
 	def send_message(self):
 		try:
 			recipient = self.chat_list.get(self.chat_list.curselection())
-			content = self.user_input.get().strip()
+			content = self.user_input.get("1.0", tk.END).strip()
 			if not recipient or not content:
 				messagebox.showerror("Error", "Please select a chat and enter a message.")
 				return
@@ -71,7 +72,8 @@ class ChatAppGUI(ChatAppLogic):
 			data = {
 				"group_name" if self.chat_mode == "group" else "receiver": recipient,
 				"sender": self.current_user,
-				"content": content
+				"content": content,
+				"language": self.current_language
 			}
 			response = self.send_request(action, data)
 			if response["status"] == "success":
@@ -83,31 +85,48 @@ class ChatAppGUI(ChatAppLogic):
 			messagebox.showerror("Error", "Please select a chat.")
 
 	def load_messages_GUI(self, chat_name):
+		def load_message_monotone(message):
+			sender, timestamp, content, POS_tags = message
+			print(f"Message is {sender}, {content}")
+			self.chat_display.insert(tk.END, f"{sender}")
+			self.chat_display.insert(tk.END, f": {content}\n")
+			self.chat_display.insert(tk.END, f"{timestamp}\n")
+		
+		def parse_text(text):
+		    # Use regex to split the text into words, punctuation, and spaces
+		    tokens = re.findall(r'\w+\s*|\W+\s*', text)
+		    # Remove any empty strings that may result from splitting
+		    tokens = [token for token in tokens if token.strip() or token == ' ']
+		    return tokens
+
+		def pack_tags(words, tags):
+			print(f"packing tags: words are {words}, tags are {tags}")
+			return [(words[i], tags[i]) for i in range(len(words))]
+
 		self.chat_name = chat_name
 		self.chat_display.config(state=tk.NORMAL)
 		self.chat_display.delete(1.0, tk.END)
 		messages = self.load_messages(chat_name)
 		if self.tagging:
-			for sender, content, timestamp in messages:
+			for message in messages:
+				sender, timestamp, content, POS_tags = message
 				print(f"Message is {sender}, {content}")
-				self.chat_display.insert(tk.END, f"{sender}: ")
-				blob = TextBlob(content)
-				parsed_text = blob.parse().split()
-				print("parsed_text is", parsed_text)
-				for sentence in parsed_text:
-					for word, POS_tag, something1, something2 in sentence:
-						# word, POS_tag, something1, something2 = piece.split("/")
-						print(word)
-						self.chat_display.insert(tk.END, f'{word} ', POS_tag if POS_tag in POS_painting else "PNC")
-				self.chat_display.insert(tk.END, f"\n{timestamp}\n")
-			for POS in POS_painting:
-				self.chat_display.tag_config(POS, foreground=POS_painting[POS])
+				if POS_tags:
+					self.chat_display.insert(tk.END, f"{sender}: ")
+					parsed_text = pack_tags(content.split(), POS_tags.split())
+					logger.info(f"[CLIENT] on load_messages_GUI parsed_text is {parsed_text}")
+					for word, POS_tag in parsed_text:
+						self.chat_display.insert(tk.END, f'{word} ', POS_tag if POS_tag in POS_color_map else "X")
+					self.chat_display.insert(tk.END, f"\n{timestamp}\n")
+				else:
+					load_message_monotone(message)
+			for POS in POS_color_map:
+				print(f'coloring POS {POS}')
+				self.chat_display.tag_config(POS, foreground=POS_color_map[POS])
 		else:
-			print(f"Message is {sender}, {content}")
-			for sender, content, timestamp in messages:
-				self.chat_display.insert(tk.END, f"{sender}")
-				self.chat_display.insert(tk.END, f": {content}\n")
-				self.chat_display.insert(tk.END, f"{timestamp}\n")
+			for message in messages:
+				load_message_monotone(message)
+
 		self.chat_display.config(state=tk.DISABLED)
 
 	def load_mistake_data(self, mistake_header):
@@ -158,7 +177,7 @@ class ChatAppGUI(ChatAppLogic):
 		display_and_top_bar_frame = tk.Frame(main_frame)
 		display_and_top_bar_frame.pack(expand=True, fill=tk.BOTH, side=tk.RIGHT)
 		top_bar_frame = tk.Frame(display_and_top_bar_frame)
-		top_bar_frame.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
+		top_bar_frame.pack(expand=True, fill=tk.X, side=tk.TOP)
 		tk.Button(top_bar_frame, text="Mistakes", command=self.open_mistakes_window, bg="green", fg="white").grid(column=0, row=0, pady=10, padx=10)
 		tk.Button(top_bar_frame, text="Profile", command=self.open_profile, bg="green", fg="white").grid(column=1, row=0, pady=10, padx=10)
 		tk.Button(top_bar_frame, text="More messages", command=self.load_more, bg="#0078D7", fg="white").grid(column=2, row=0, pady=10, padx=10)
@@ -172,12 +191,20 @@ class ChatAppGUI(ChatAppLogic):
 
 		input_frame = tk.Frame(self.root)
 		input_frame.pack(fill=tk.X, padx=5, pady=5)
-		self.user_input = tk.Entry(input_frame, font=standard_font)
+		self.user_input = scrolledtext.ScrolledText(input_frame, font=standard_font)
+		input_buttons_frame = tk.Frame(input_frame)
+		input_buttons_frame.pack(side=tk.RIGHT)
+		tk.Button(input_buttons_frame, text="Send", command=self.send_message, bg="#0078D7", fg="white").pack()
+		self.language_selector = ttk.Combobox(input_buttons_frame, values=languages)
+		self.language_selector.bind("<<ComboboxSelected>>", lambda e: self.choose_language(self.language_selector.get()))
+		self.language_selector.pack()
 		self.user_input.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5, pady=5)
-		tk.Button(input_frame, text="Send", command=self.send_message, bg="#0078D7", fg="white").pack(side=tk.RIGHT)
 		
 		self.load_chats()
 		self.root.mainloop()
+
+	def choose_language(self, language):
+		self.current_language = language
 
 	def switch_request_mode(self, mode):
 		if mode == "incoming":
@@ -223,7 +250,7 @@ class ChatAppGUI(ChatAppLogic):
 		self.send_request_button = tk.Button(self.requests_window, text="Send request", command=self.make_request, bg="#0078D7", fg="white")
 		self.send_request_button.pack(side=tk.TOP)
 		self.accept_request_button = tk.Button(self.requests_window, text="Accept request", command=self.accept_request, bg="#0078D7", fg="white")
-		
+
 		self.load_requests()
 
 

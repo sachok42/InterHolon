@@ -7,28 +7,32 @@ import os
 import json
 import datetime
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
 logging.basicConfig(filename='error_log.log', encoding='utf-8', level=logging.DEBUG)
 
 standard_font = ("Arial", 14)
 
 def setup_logger(logger_name, log_file, level=logging.DEBUG):
-    l = logging.getLogger(logger_name)
-    formatter = logging.Formatter('%(asctime)s : %(message)s')
-    fileHandler = logging.FileHandler(log_file, mode='w')
-    fileHandler.setFormatter(formatter)
-    streamHandler = logging.StreamHandler()
-    streamHandler.setFormatter(formatter)
+	l = logging.getLogger(logger_name)
+	formatter = logging.Formatter('%(asctime)s : %(message)s')
+	fileHandler = logging.FileHandler(log_file, mode='w')
+	fileHandler.setFormatter(formatter)
+	streamHandler = logging.StreamHandler()
+	streamHandler.setFormatter(formatter)
 
-    l.setLevel(level)
-    l.addHandler(fileHandler)
-    # l.addHandler(streamHandler)    
+	l.setLevel(level)
+	l.addHandler(fileHandler)
+	# l.addHandler(streamHandler)    
 
 # setup_logger('chatting_log', 'chatting_log.log')
 # setup_logger('error_log', 'error_log.log')
-logger = logging.getLogger('chatting_log')
-error_logger = logging.getLogger('error_log')
+logger = logging.getLogger('chatting_log.log')
+error_logger = logging.getLogger('error_log.log')
+formatter = logging.Formatter('%(asctime)s : %(message)s')
+fileHandler = logging.FileHandler('chatting_log.log', mode='w')
+fileHandler.setFormatter(formatter)
+logger.addHandler(fileHandler)
 
 languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukranian"]
 basic_buffer_size = 1024
@@ -80,6 +84,31 @@ def generate_key():
 		)
 	public_key = private_key.public_key()
 	return private_key, public_key
+
+RTL_langs = {
+	"Hebrew",
+	"Arabic"
+}
+
+POS_color_map = {
+	"ADJ": "#FFD700",  # Gold (Adjectives describe qualities)
+	"ADP": "#8A2BE2",  # Blue Violet (Adpositions like prepositions)
+	"ADV": "#FF69B4",  # Hot Pink (Adverbs modify verbs/adjectives)
+	"AUX": "#FF4500",  # Orange Red (Auxiliary verbs)
+	"CCONJ": "#00CED1",  # Dark Turquoise (Coordinating conjunctions)
+	"DET": "#FFA07A",  # Light Salmon (Determiners like articles)
+	"INTJ": "#BA55D3",  # Medium Orchid (Interjections express emotion)
+	"NOUN": "#1E90FF",  # Dodger Blue (Nouns represent things)
+	"NUM": "#32CD32",  # Lime Green (Numerals represent numbers)
+	"PART": "#FF6347",  # Tomato (Particles like negation)
+	"PRON": "#6A5ACD",  # Slate Blue (Pronouns replace nouns)
+	"PROPN": "#4682B4",  # Steel Blue (Proper nouns are specific names)
+	"PUNCT": "#A9A9A9",  # Dark Gray (Punctuation marks)
+	"SCONJ": "#20B2AA",  # Light Sea Green (Subordinating conjunctions)
+	"SYM": "#808080",   # Gray (Symbols like $, %)
+	"VERB": "#DC143C",  # Crimson (Verbs represent actions)
+	"X": "#D3D3D3",     # Light Gray (Other/unknown)
+}
 
 POS_painting = {
 	"CC": "#7f7f7f",
@@ -168,6 +197,94 @@ def decrypt_message(data, private_key):
 	decrypted_message = decryptor.update(ciphertext) + decryptor.finalize()
 	# logger.info(f"[PROTOCOL] finished decrypting message")
 	return decrypted_message.decode()
+
+language_names_to_shortnames = {
+	"English": "en",
+	"Hebrew": "he",
+	"Spanish": "es",
+	"French": "fr",
+	"German": "de",
+	"Russian": "ru",
+	"Arabic": "ar",
+	"Chinese": "zh",
+	"Japanese": "ja",
+	"Korean": "ko",
+	"Italian": "it",
+	"Portuguese": "pt",
+	"Dutch": "nl",
+	"Turkish": "tr",
+	"Hindi": "hi",
+	"Greek": "el",
+	"Polish": "pl",
+	"Finnish": "fi",
+	"Swedish": "sv",
+	"Danish": "da",
+	"Norwegian": "no",
+	"Hungarian": "hu",
+	"Czech": "cs",
+	"Thai": "th",
+	"Vietnamese": "vi",
+	"Ukrainian": "uk"
+}
+
+
+shortnames_to_phunspell_names = {
+	"en": "en_US",  # English (United States)
+	"he": "he_IL",  # Hebrew (Israel)
+	"es": "es_ES",  # Spanish (Spain)
+	"fr": "fr_FR",  # French (France)
+	"de": "de_DE",  # German (Germany)
+	"ru": "ru_RU",  # Russian (Russia)
+	"ar": "ar_SA",  # Arabic (Saudi Arabia)
+	"zh": "zh_CN",  # Chinese (China)
+	"ja": "ja_JP",  # Japanese (Japan)
+	"ko": "ko_KR",  # Korean (South Korea)
+	"it": "it_IT",  # Italian (Italy)
+	"pt": "pt_PT",  # Portuguese (Portugal)
+	"nl": "nl_NL",  # Dutch (Netherlands)
+	"tr": "tr_TR",  # Turkish (Turkey)
+	"hi": "hi_IN",  # Hindi (India)
+	"el": "el_GR",  # Greek (Greece)
+	"pl": "pl_PL",  # Polish (Poland)
+	"fi": "fi_FI",  # Finnish (Finland)
+	"sv": "sv_SE",  # Swedish (Sweden)
+	"da": "da_DK",  # Danish (Denmark)
+	"no": "no_NO",  # Norwegian (Norway)
+	"hu": "hu_HU",  # Hungarian (Hungary)
+	"cs": "cs_CZ",  # Czech (Czech Republic)
+	"th": "th_TH",  # Thai (Thailand)
+	"vi": "vi_VN",  # Vietnamese (Vietnam)
+	"uk": "uk_UA"
+}
+
+full_names_to_phunspell_names = {
+	"English": "en_US",  # English (United States)
+	"Hebrew": "he_IL",   # Hebrew (Israel)
+	"Spanish": "es_ES",  # Spanish (Spain)
+	"French": "fr_FR",   # French (France)
+	"German": "de_DE",   # German (Germany)
+	"Russian": "ru_RU",  # Russian (Russia)
+	"Arabic": "ar_SA",   # Arabic (Saudi Arabia)
+	"Chinese": "zh_CN",  # Chinese (China)
+	"Japanese": "ja_JP", # Japanese (Japan)
+	"Korean": "ko_KR",   # Korean (South Korea)
+	"Italian": "it_IT",  # Italian (Italy)
+	"Portuguese": "pt_PT",  # Portuguese (Portugal)
+	"Dutch": "nl_NL",    # Dutch (Netherlands)
+	"Turkish": "tr_TR",  # Turkish (Turkey)
+	"Hindi": "hi_IN",    # Hindi (India)
+	"Greek": "el_GR",    # Greek (Greece)
+	"Polish": "pl_PL",   # Polish (Poland)
+	"Finnish": "fi_FI",  # Finnish (Finland)
+	"Swedish": "sv_SE",  # Swedish (Sweden)
+	"Danish": "da_DK",   # Danish (Denmark)
+	"Norwegian": "no_NO",  # Norwegian (Norway)
+	"Hungarian": "hu_HU",  # Hungarian (Hungary)
+	"Czech": "cs_CZ",    # Czech (Czech Republic)
+	"Thai": "th_TH",     # Thai (Thailand)
+	"Vietnamese": "vi_VN",  # Vietnamese (Vietnam)
+	"Ukrainian": "uk_UA"
+}
 
 # Run validation on script load (optional)
 # validate_language_tree(LANGUAGE_TREE)

@@ -1,9 +1,26 @@
 from protocol import *
 import numpy as np
 import sqlite3
+from POS_tagger import POS_tagger
+from phunspell import Phunspell
 
 
 class ChatServerUtilities:
+	def __init__(self):
+		self.POS_taggers = {}
+		self.spellcheckers = {}
+
+	def tag_text(self, language, text):
+		language = language_names_to_shortnames[language]
+		if language not in self.POS_taggers:
+			self.POS_taggers[language] = POS_tagger(language)
+		return self.POS_taggers[language].tag_text(text)
+
+	def spellcheck_text(self, language, message):
+		if language not in self.spellcheckers:
+			self.spellcheckers[language] = Phunspell(full_names_to_phunspell_names[language])
+		return message.analyze(self.spellcheckers[language])
+
 	def get_user_id(self, conn, user):
 		try:
 			cursor = conn.cursor()
@@ -27,6 +44,11 @@ class ChatServerUtilities:
 	def get_language_name(self, cursor, ID):
 		logger.info(f"[SERVER] finds name of the user id {ID}")
 		cursor.execute("SELECT name FROM languages WHERE id = ?", (ID,))
+		return cursor.fetchone()[0]
+
+	def get_language_id(self, conn, language):
+		cursor = conn.cursor()
+		cursor.execute("SELECT id FROM languages WHERE name = ?", (language,))
 		return cursor.fetchone()[0]
 
 	def replenish_ids_with_usernames(self, conn, elements):
@@ -65,12 +87,15 @@ class ChatServerUtilities:
 		
 	def get_messages(self, conn, group_id, last_id=1e6):
 		cursor = conn.cursor()
-		cursor.execute("SELECT sender_id, content, timestamp FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10", (group_id, last_id))
+		cursor.execute("""
+			SELECT sender_id, timestamp, content, POS_tags FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10
+			""", (group_id, last_id))
 		messages = cursor.fetchall()[-1::-1]
 		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10", (group_id, last_id))
 		ids = self.flatten_array(cursor.fetchall()) + [1e9]
 		messages = self.replenish_ids_with_usernames(conn, messages)
 		last_id = min(ids)
+		# messages_tagged = [(messages[i][:-1] + [tags[i]]) for i in range(len(messages))]
 		return messages, last_id
 
 	def flatten_array(self, array):
@@ -80,13 +105,18 @@ class ChatServerUtilities:
 		logger.info(f"[SERVER] started analysing message {ID}")
 		conn = sqlite3.connect("chat_server.db")
 		cursor = conn.cursor()
-		mistakes, tags = message.analyze(self.my_spellchecker)
+		mistakes = self.spellcheck_text(message.language, message)
+		pre_tags = self.tag_text(message.language, message.content)
+		# logger.info(f"[SERVER] on analyze_message_autonomous: tags are {tags}")
+		tags = ' '.join([tag[1] for sentence in pre_tags for tag in sentence])
+		content = ' '.join([tag[0] for sentence in pre_tags for tag in sentence])
 		cursor.executemany("""
 			INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word) VALUES (?, ?, ?, ?, ?)
 			""", [(self.get_user_id(conn, message.sender), 1, ID, mistake["word_number"], mistake["corrected_word"]) for mistake in mistakes])
 		cursor.execute("""
-			UPDATE messages SET POS_tags = ?
-			""", (tags,))
+			UPDATE messages SET POS_tags = ?, content = ? WHERE ID = ?
+			""", (tags, content, ID))
+		logger.info(f"[SERVER] on analyze_message_autonomous: tags are {tags}")
 		conn.commit()
 		return
 

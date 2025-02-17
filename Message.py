@@ -1,25 +1,37 @@
-from textblob import TextBlob
-
+import string
+from protocol import *
 
 class Message:
-	def __init__(self, content, sender=None, timestamp=None, chat=None, receiver=None):
+	def __init__(self, content, sender=None, chat=None, language=None):
 		self.content = content
 		self.sender = sender
 		self.chat = chat
-		self.timestamp = timestamp
+		self.language = language
 
-	def analyze(self, my_spellchecker):
-		print(f"started analysis of message {self.content}")
+	def analyze(self, spellchecker):
+		def preprocess_text(text):
+			# Remove punctuation
+			text = text.translate(str.maketrans("", "", string.punctuation))
+			return text
+		# print(f"started analysis of message {self.content}")
 		mistakes = []
-		words = self.content.split()
-		blob = TextBlob(self.content)
-		tags = ' '.join([tag[1] for tag in blob.tags])
-		print(f"words are {words}")
+		text = preprocess_text(self.content)
+		words = text.split()
+		print(f"content is {text}, words are {words}")
+		# misspelled = spellchecker.lookup_list(text)
+		# print(f"wrong words are {misspelled}")
+		# indexes = [words.index(mistake) for mistake in misspelled]
 		for i in range(len(words)):
-			print(f"i is {i}")
 			word = words[i]
-			correction = my_spellchecker.correction(word)
-			if correction != word:
+			print(f"i is {i}, word is {word}")
+			if not spellchecker.lookup(word.lower()):
+				corrections_lowered = [variant.lower() for variant in spellchecker.suggest(word)]
+				logger.info(f"[MESSAGE] on analyze: found mistake, suggestions are {', '.join(corrections_lowered)}")
+				try:
+					correction = corrections_lowered[0]
+				except:
+					correction = "unknown"
+
 				mistakes.append({"type": "typo", "word_number": i, "corrected_word": correction})
 		print(f"mistakes are {mistakes}")
-		return mistakes, tags
+		return mistakes
