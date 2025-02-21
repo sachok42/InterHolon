@@ -1,6 +1,5 @@
 from chat_client_logic import *
 import time
-from textblob import TextBlob
 import re
 
 
@@ -352,6 +351,7 @@ class ChatAppGUI(ChatAppLogic):
 		self.login_screen = tk.Tk()
 		self.login_screen.title("Login/Register")
 		self.login_screen.geometry("400x300")
+		self.login_screen.configure(bg="lightblue")
 
 		tk.Label(self.login_screen, text="Login", font=standard_font).pack(pady=10)
 		self.login_username = tk.Entry(self.login_screen, font=("Arial", 12))

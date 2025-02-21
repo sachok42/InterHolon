@@ -6,7 +6,6 @@ import numpy as np
 from protocol import *
 import pyscrypt
 import random
-import spellchecker
 from Message import Message
 from sql_db_init import sql_db_init
 from ChatServerUtilities import *
@@ -20,7 +19,6 @@ class ChatServer(ChatServerUtilities):
         self.port = port
 
         self.conn = sqlite3.connect("chat_server.db")
-        self.my_spellchecker = spellchecker.SpellChecker()
         self.messages_num = 0
         self.users_num = 0
         self.chats_num = 0
@@ -233,7 +231,7 @@ class ChatServer(ChatServerUtilities):
         if not languages:
             return {"status": "error", "message": "You must select at least one language."}
         try:
-            salt = str(random.randint(1, 1e9))
+            salt = str(random.randint(1, 1000000000))
             # print(f"password is {password}")
             hashed_password = pyscrypt.hash(password=password.encode('utf-8'),\
              salt=salt.encode('utf-8'), N=1024, r=1, p=1, dkLen=32)
