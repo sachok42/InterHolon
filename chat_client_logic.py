@@ -29,10 +29,6 @@ class ChatAppLogic:
 
 		self.POS_taggers = {}
 
-	def populate_language_list(self, lang_list):
-		for language in languages:
-			lang_list.insert(tk.END, language)
-
 	def tag_text(self, language, text):
 		if language not in self.POS_taggers:
 			self.POS_taggers[language] = POS_tagger(language)
@@ -58,7 +54,7 @@ class ChatAppLogic:
 			logger.info(f"[CLIENT] got response: {response}\n")
 			return response
 		except Exception as e:
-			messagebox.showerror("Connection Error", f"An error occurred: {e}")
+			logger.error(f"[PROTOCOL] on send_request: an error occurred: {e}")
 			return {"status": "error", "message": str(e)}
 
 	def load_messages(self, chat_name, last_id_usage=False, update=False):

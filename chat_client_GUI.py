@@ -17,6 +17,8 @@ class ChatAppGUI(ChatAppLogic):
 		self.most_recent_id = None
 		self.loading_period = 1
 		self.tagging = True
+		self.current_language = "English"
+		self.current_chat = None
 
 		self.open_login_screen()
 
@@ -59,9 +61,13 @@ class ChatAppGUI(ChatAppLogic):
 	def load_updates(self):
 		response = self.send_request("load_updates", {"chat": self.current_user})
 
+	def populate_language_list(self, lang_list):
+		for language in languages:
+			lang_list.insert(tk.END, language)
+
 	def send_message(self):
 		try:
-			recipient = self.chat_list.get(self.chat_list.curselection())
+			recipient = self.current_chat
 			content = self.user_input.get("1.0", tk.END).strip()
 			if not recipient or not content:
 				messagebox.showerror("Error", "Please select a chat and enter a message.")
@@ -84,6 +90,7 @@ class ChatAppGUI(ChatAppLogic):
 			messagebox.showerror("Error", "Please select a chat.")
 
 	def load_messages_GUI(self, chat_name):
+		self.current_chat = chat_name
 		def load_message_monotone(message):
 			sender, timestamp, content, POS_tags = message
 			print(f"Message is {sender}, {content}")
@@ -120,7 +127,6 @@ class ChatAppGUI(ChatAppLogic):
 				else:
 					load_message_monotone(message)
 			for POS in POS_color_map:
-				print(f'coloring POS {POS}')
 				self.chat_display.tag_config(POS, foreground=POS_color_map[POS])
 		else:
 			for message in messages:

@@ -349,7 +349,7 @@ class ChatServer(ChatServerUtilities):
 
     def accept_request(self, conn, request_data):
         sender_id = self.get_user_id(conn, request_data["sender"])
-        receiver_id = self.get_user_id(conn, request_data["receiver"])
+        receiver_id = self.get_user_id(conn, request_data["user"])
         logger.info(f"[SERVER] on accept_request: sender id is {sender_id} and receiver id is {receiver_id}")
         self.add_contact_by_id(conn, sender_id, receiver_id)
         cursor = conn.cursor()

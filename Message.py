@@ -23,7 +23,7 @@ class Message:
 		# indexes = [words.index(mistake) for mistake in misspelled]
 		for i in range(len(words)):
 			word = words[i]
-			print(f"i is {i}, word is {word}")
+			# print(f"i is {i}, word is {word}")
 			if not spellchecker.lookup(word.lower()):
 				corrections_lowered = [variant.lower() for variant in spellchecker.suggest(word)]
 				logger.info(f"[MESSAGE] on analyze: found mistake, suggestions are {', '.join(corrections_lowered)}")

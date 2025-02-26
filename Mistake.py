@@ -1,2 +1,5 @@
 class Mistake:
-	pass
+	...
+
+
+print(...)
