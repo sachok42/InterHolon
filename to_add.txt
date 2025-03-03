@@ -1,7 +1,0 @@
-To add:
-1. Speech parts highlights
-2. Requests
-
-To fix: 
-1. Personal messages bugging
-2. Mistakes window size

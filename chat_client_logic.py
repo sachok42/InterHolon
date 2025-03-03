@@ -8,9 +8,9 @@ import random
 from POS_tagger import POS_tagger
 
 class ChatAppLogic:
-	SERVER_ADDRESS = ("127.0.0.1", 12345)  # Adjust as needed
 
 	def __init__(self):
+		self.SERVER_ADDRESS = (input() or "127.0.0.1", 12345)  # Adjust as needed
 		logger.info("\n\nClient on")
 		self.last_id = 1e9
 		self.private_key, self.public_key = generate_key()

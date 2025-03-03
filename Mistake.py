@@ -1,5 +1,0 @@
-class Mistake:
-	...
-
-
-print(...)

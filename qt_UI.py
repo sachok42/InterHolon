@@ -65,19 +65,24 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 			QMessageBox.critical(self, "Error", "Username cannot be empty.")
 
 	def switch_chat_mode(self, mode):
+		logger.info(f"[GUI] on switch_chat_mode mode is {mode}")
 		self.chat_mode = mode
 		self.load_chats()
 
 	def load_chats(self):
-		self.chat_list.clear()
-		if self.chat_mode == "group":
-			response = self.send_request("get_groups")
-			groups = response.get("groups", ["No groups available."])
-			self.chat_list.addItems(groups)
-		elif self.chat_mode == "personal":
-			response = self.send_request("get_users")
-			users = [user for user in response.get("users", []) if user != self.current_user]
-			self.chat_list.addItems(users or ["No users available for personal chat."])
+		try:
+			logger.info(f"[GUI] on load_chats started loading chats mode {self.chat_mode}")
+			self.chat_list.clear()
+			if self.chat_mode == "group":
+				response = self.send_request("get_groups")
+				groups = response.get("groups", ["No groups available."])
+				self.chat_list.addItems(groups)
+			elif self.chat_mode == "personal":
+				response = self.send_request("get_users")
+				users = [user for user in response.get("users", []) if user != self.current_user]
+				self.chat_list.addItems(users or ["No users available for personal chat."])
+		except Exception as e:
+			logger.error(f"[GUI] error on load_chats is {e}")
 
 	def automatic_load(self):
 		QTimer.singleShot(self.loading_period * 1000, self.load_chats)
