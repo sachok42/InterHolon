@@ -415,7 +415,8 @@ class ChatServer(ChatServerUtilities):
 					try:
 						request_data = json.loads(request)
 					except json.JSONDecodeError:
-						client_socket.send(encrypt_message(json.dumps({"status": "error", "message": "Invalid JSON"}), public_key))
+						message = encrypt_message(json.dumps({"status": "error", "message": "Invalid JSON"}), public_key)
+						send_message_by_parts(client_socket, message, private_key)
 						continue
 					action = request_data.get("action")
 					if action == "login":
