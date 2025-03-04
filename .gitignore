@@ -12,3 +12,4 @@ __pycache__/protocol.cpython-311.pyc
 __pycache__/protocol.cpython-311.pyc
 chat_server.db
 *.pyc
+chat_server.db

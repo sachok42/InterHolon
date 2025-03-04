@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
 	QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
 	QMessageBox, QListWidget, QTextEdit, QComboBox, QScrollArea
 )
+from PyQt6.QtGui import QTextCursor, QTextCharFormat, QColor
 from PyQt6.QtCore import Qt, QTimer
 import sys
 from chat_client_logic import ChatAppLogic
@@ -46,6 +47,10 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		login_button = QPushButton("Login")
 		login_button.clicked.connect(self.login_user)
 		layout.addWidget(login_button)
+
+		register_button = QPushButton("Register")
+		register_button.clicked.connect(self.register_user)
+		layout.addWidget(register_button)
 
 		self.login_screen.setLayout(layout)
 		print("created login window")
@@ -110,25 +115,67 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 
 	def load_messages_GUI(self, chat_name):
 		def pack_tags(words, tags):
-			print(f"packing tags: words are {words}, tags are {tags}")
+			# print(f"packing tags: words are {words}, tags are {tags}")
 			return [(words[i], tags[i]) for i in range(len(words))]
+
+		def color_text(text_edit):
+			cursor = text_edit.textCursor()
+
+			# Iterate through the tags and apply formatting
+			for tag, color in POS_color_map.items():
+				start_tag = f"<{tag}>"
+				end_tag = f"</{tag}>"  # Construct the closing tag
+				color = QColor(color)
+
+				cursor.movePosition(QTextCursor.MoveOperation.Start)
+				while True:
+					# Find the start tag
+					cursor = text_edit.document().find(start_tag, cursor)
+					if cursor.isNull():
+						break  # No more occurrences of the start tag
+
+					# Remove the start tag
+					cursor_position = cursor.position()  # Save the cursor position
+					cursor.removeSelectedText()  # Remove the start tag
+
+					# Find the end tag
+					end_cursor = text_edit.document().find(end_tag, cursor)
+					if end_cursor.isNull():
+						break  # No matching end tag found
+
+					# Remove the end tag
+					end_cursor.removeSelectedText()
+
+					# Select the text between the tags
+					cursor.setPosition(cursor_position, QTextCursor.MoveMode.MoveAnchor)
+					cursor.setPosition(end_cursor.position(), QTextCursor.MoveMode.KeepAnchor)
+
+					# Apply the color formatting to the selected text
+					char_format = QTextCharFormat()
+					char_format.setForeground(color)
+					cursor.mergeCharFormat(char_format)
 
 		self.current_chat = chat_name
 		self.chat_display.clear()
 		messages = self.load_messages(chat_name)
+		custom_log(f"[CLIENT] on load_messages_GUI: started loading messages")
 		if self.tagging:
 			for message in messages:
+				custom_log(f"[CLIENT] on load_messages_GUI: started loading message {message}")
 				sender, timestamp, content, POS_tags = message
 				if POS_tags:
 					parsed_text = pack_tags(content.split(), POS_tags.split())
 					for word, POS_tag in parsed_text:
-						self.chat_display.append(f'{word} ')
+						self.chat_display.append(f'<{POS_tag}>{word}</{POS_tag}> ')
 					self.chat_display.append(f"\n{timestamp}\n")
+					custom_log(f"[CLIENT] on load_messages_GUI: message is loaded tagged")
 				else:
+					custom_log(f"[CLIENT] on load_messages_GUI: message is loaded monotone")
 					self.load_message_monotone(message)
 		else:
 			for message in messages:
 				self.load_message_monotone(message)
+		color_text(self.chat_display)
 
 	def load_message_monotone(self, message):
 		sender, timestamp, content, POS_tags = message
@@ -321,11 +368,16 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		logger.info(f"[CLIENT] ready to show mistakes {mistakes_names}")
 		self.mistakes_list.addItems(mistakes_names)
 
+	def populate_language_list(self, lang_list):
+		for language in languages:
+			lang_list.addItem(language)
+
 	def register_user(self):
 		def submit_registration():
 			username = username_entry.text().strip()
 			password = password_entry.text()
-			selected_languages = [lang_list.item(i).text() for i in lang_list.selectedItems()]
+			selected_languages = [item.text() for item in lang_list.selectedItems()]
+			print(f"selected_languages are {selected_languages}")
 			if not username:
 				QMessageBox.critical(self, "Error", "Username cannot be empty.")
 				return

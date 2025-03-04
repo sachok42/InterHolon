@@ -208,9 +208,6 @@ class ChatAppGUI(ChatAppLogic):
 		self.load_chats()
 		self.root.mainloop()
 
-	def choose_language(self, language):
-		self.current_language = language
-
 	def switch_request_mode(self, mode):
 		if mode == "incoming":
 			self.accept_request_button.pack()

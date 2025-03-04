@@ -1,8 +1,13 @@
 import stanza
+from protocol import mwt_languages
 
 class POS_tagger:
 	def __init__(self, language):
-		self.nlp = stanza.Pipeline(language, processors='tokenize,mwt,pos')
+		if language in mwt_languages:
+			processors = "tokenize,mwt,pos"
+		else:
+			processors = "tokenize,pos"
+		self.nlp = stanza.Pipeline(language, processors=processors)
 
 	def tag_text(self, text):
 		doc = self.nlp(text)

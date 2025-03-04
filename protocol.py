@@ -71,8 +71,10 @@ LANGUAGE_TREE = {
 	}
 }
 
-def custom_log(text, usedloger=logger):
-	message = f"{text} {datetime.datetime.now()}"
+def custom_log(text, used_logger=None):
+	if used_logger is None:
+		used_logger = logger
+	message = f"{datetime.datetime.now()} {text}"
 	logger.info(message)
 	print(message)
 
@@ -285,6 +287,8 @@ full_names_to_phunspell_names = {
 	"Vietnamese": "vi_VN",  # Vietnamese (Vietnam)
 	"Ukrainian": "uk_UA"	# Ukranian (Ukraine)
 }
+
+mwt_languages = {"he", "en"}
 
 # Run validation on script load (optional)
 # validate_language_tree(LANGUAGE_TREE)
