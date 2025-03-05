@@ -6,6 +6,8 @@ import random
 import os
 import json
 import datetime
+from PyQt6.QtGui import QColor, QTextCharFormat
+
 
 # logger = logging.getLogger(__name__)
 logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
@@ -112,6 +114,13 @@ POS_color_map = {
 	"X": "#D3D3D3",     # Light Gray (Other/unknown)
 }
 
+POS_color_map_qt = dict()
+
+for color in POS_color_map:
+	char_format = QTextCharFormat()
+	char_format.setForeground(QColor(color))
+	POS_color_map_qt[color] = char_format
+
 POS_painting = {
 	"CC": "#7f7f7f",
 	"CD": "#d62738",
@@ -153,7 +162,7 @@ POS_painting = {
 }
 
 def encrypt_message(message, public_key):
-	# logger.info(f"[PROTOCOL] started encrypting message")
+	logger.info(f"[PROTOCOL] started encrypting message")
 	aes_key = os.urandom(32)
 	iv = os.urandom(12)
 
@@ -174,12 +183,12 @@ def encrypt_message(message, public_key):
 		"ciphertext": ciphertext.hex(),
 		"tag": encryptor.tag.hex()
 		})
-	# logger.info(f"[PROTOCOL] finished encrypting message")
+	logger.info(f"[PROTOCOL] finished encrypting message")
 	return res.encode()
 
 
 def decrypt_message(data, private_key):
-	# logger.info(f"[PROTOCOL] started decrypting message")
+	logger.info(f"[PROTOCOL] started decrypting message")
 	data = json.loads(data)
 	encrypted_aes_key = bytes.fromhex(data["aes_key"])
 	iv = bytes.fromhex(data["iv"])
@@ -197,7 +206,7 @@ def decrypt_message(data, private_key):
 	aes_cipher = Cipher(algorithms.AES(aes_key), modes.GCM(iv, tag))
 	decryptor = aes_cipher.decryptor()
 	decrypted_message = decryptor.update(ciphertext) + decryptor.finalize()
-	# logger.info(f"[PROTOCOL] finished decrypting message")
+	logger.info(f"[PROTOCOL] finished decrypting message")
 	return decrypted_message.decode()
 
 language_names_to_shortnames = {
@@ -298,12 +307,12 @@ def send_message_by_parts(used_socket, encoded_message, private_key):
 	index = 0
 	while index + basic_buffer_size - 8 < len(encoded_message):
 		data = b"0" + encoded_message[index: index + basic_buffer_size - 8]
-		# logger.info(f"[PROTOCOL] on send_message_by_parts: sent chunk starting {data[0]}")
+		logger.info(f"[PROTOCOL] on send_message_by_parts: sent chunk starting {data[0]}")
 		used_socket.send(data)
 		index += basic_buffer_size - 8
-		# logger.info(f"[PROTOCOL] on send_message_by_parts: sent chunk number {index // (basic_buffer_size - 8)}")
+		logger.info(f"[PROTOCOL] on send_message_by_parts: sent chunk number {index // (basic_buffer_size - 8)}")
 	data = b"1" + encoded_message[index:]
-	# logger.info(f"[PROTOCOL] on send_message_by_parts: final chunk starting {data[0]}")
+	logger.info(f"[PROTOCOL] on send_message_by_parts: final chunk starting {data[0]}")
 	used_socket.send(data)
 
 def get_message_by_parts(used_socket, public_key):
@@ -312,12 +321,12 @@ def get_message_by_parts(used_socket, public_key):
 
 	while True:
 		data = used_socket.recv(basic_buffer_size)
-		# logger.info(f"[PROTOCOL] on get_message_by_parts got a chunk, first char is {data[0]}")
+		logger.info(f"[PROTOCOL] on get_message_by_parts got a chunk, first char is {data[0]}")
 		result = result + data[1:]
 		if data[0] == 49:
 			break
 
-	# logger.info(f"[PROTOCOL] on get_message_by_parts: final size of the message is {len(result)}")
+	logger.info(f"[PROTOCOL] on get_message_by_parts: final size of the message is {len(result)}")
 	return result
 
 def get_message(used_socket, public_key):

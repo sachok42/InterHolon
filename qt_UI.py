@@ -118,14 +118,13 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 			# print(f"packing tags: words are {words}, tags are {tags}")
 			return [(words[i], tags[i]) for i in range(len(words))]
 
-		def color_text(text_edit):
+		def color_tagged_text(text_edit):
 			cursor = text_edit.textCursor()
 
 			# Iterate through the tags and apply formatting
-			for tag, color in POS_color_map.items():
+			for tag, color in POS_color_map_qt.items():
 				start_tag = f"<{tag}>"
 				end_tag = f"</{tag}>"  # Construct the closing tag
-				color = QColor(color)
 
 				cursor.movePosition(QTextCursor.MoveOperation.Start)
 				while True:
@@ -147,35 +146,54 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 					end_cursor.removeSelectedText()
 
 					# Select the text between the tags
-					cursor.setPosition(cursor_position, QTextCursor.MoveMode.MoveAnchor)
+					cursor.setPosition(cursor.position(), QTextCursor.MoveMode.MoveAnchor)
 					cursor.setPosition(end_cursor.position(), QTextCursor.MoveMode.KeepAnchor)
 
 					# Apply the color formatting to the selected text
-					char_format = QTextCharFormat()
-					char_format.setForeground(color)
+					char_format = color
 					cursor.mergeCharFormat(char_format)
 
 		self.current_chat = chat_name
 		self.chat_display.clear()
 		messages = self.load_messages(chat_name)
 		custom_log(f"[CLIENT] on load_messages_GUI: started loading messages")
+
+		cursor = self.chat_display.textCursor()
+		cursor.movePosition(QTextCursor.MoveOperation.Start)
+		end_cursor = self.chat_display.textCursor()
+		
 		if self.tagging:
 			for message in messages:
 				custom_log(f"[CLIENT] on load_messages_GUI: started loading message {message}")
 				sender, timestamp, content, POS_tags = message
+
 				if POS_tags:
 					parsed_text = pack_tags(content.split(), POS_tags.split())
+
 					for word, POS_tag in parsed_text:
-						self.chat_display.append(f'<{POS_tag}>{word}</{POS_tag}> ')
+						# self.chat_display.insertPlainText(f'<{POS_tag}>{word}</{POS_tag}> ')
+						cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.MoveAnchor)
+						position_start = cursor.position()
+						self.chat_display.insertPlainText(f'{word} ')
+						end_cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.KeepAnchor)
+						position_end = cursor.position()
+						print(position_start, position_end)
+						cursor.setPosition(position_start, QTextCursor.MoveMode.MoveAnchor)
+						cursor.setPosition(position_end, QTextCursor.MoveMode.KeepAnchor)
+
+						color = POS_color_map_qt[POS_tag]
+						cursor.mergeCharFormat(color)
+
 					self.chat_display.append(f"\n{timestamp}\n")
 					custom_log(f"[CLIENT] on load_messages_GUI: message is loaded tagged")
+
 				else:
 					custom_log(f"[CLIENT] on load_messages_GUI: message is loaded monotone")
 					self.load_message_monotone(message)
 		else:
 			for message in messages:
 				self.load_message_monotone(message)
-		color_text(self.chat_display)
+		# color_tagged_text(self.chat_display)
 
 	def load_message_monotone(self, message):
 		sender, timestamp, content, POS_tags = message
