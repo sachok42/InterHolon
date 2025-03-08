@@ -175,15 +175,23 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 						cursor.movePosition(QTextCursor.MoveOperation.End)
 						position_start = cursor.position()
 						self.chat_display.insertPlainText(f'{word} ')
+						custom_log(f"[CLIENT] on load_messages_GUI tag-coloring: word is {word}")
 						end_cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.KeepAnchor)
 						position_end = cursor.position()
 						print(position_start, position_end)
 						cursor.setPosition(position_start, QTextCursor.MoveMode.MoveAnchor)
-						print(f"Selected text is {cursor.selectedText()}")
 						cursor.setPosition(position_end, QTextCursor.MoveMode.KeepAnchor)
+						custom_log(f"Selected text is {cursor.selectedText()}")
 
-						color = POS_color_map_qt[POS_tag]
-						cursor.mergeCharFormat(color)
+						frmt = QTextCharFormat()
+						frmt.setForeground(QColor(POS_color_map[POS_tag]))
+						# self.chat_display.setTextCursor(cursor)
+						cursor.mergeCharFormat(frmt)
+					
+					cursor.movePosition(QTextCursor.MoveOperation.End)
+					frmt = QTextCharFormat()
+					frmt.setForeground(QColor("white"))	
+					cursor.mergeCharFormat(frmt)
 
 					self.chat_display.append(f"\n{timestamp}\n")
 					custom_log(f"[CLIENT] on load_messages_GUI: message is loaded tagged")
