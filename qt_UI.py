@@ -172,13 +172,14 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 
 					for word, POS_tag in parsed_text:
 						# self.chat_display.insertPlainText(f'<{POS_tag}>{word}</{POS_tag}> ')
-						cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.MoveAnchor)
+						cursor.movePosition(QTextCursor.MoveOperation.End)
 						position_start = cursor.position()
 						self.chat_display.insertPlainText(f'{word} ')
 						end_cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.KeepAnchor)
 						position_end = cursor.position()
 						print(position_start, position_end)
 						cursor.setPosition(position_start, QTextCursor.MoveMode.MoveAnchor)
+						print(f"Selected text is {cursor.selectedText()}")
 						cursor.setPosition(position_end, QTextCursor.MoveMode.KeepAnchor)
 
 						color = POS_color_map_qt[POS_tag]
