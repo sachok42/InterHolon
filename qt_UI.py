@@ -328,8 +328,9 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 	def open_group_creation_window(self):
 		def make_group():
 			name = self.group_entry.text().strip()
-			selected_users = [self.users_list.item(i).text() for i in self.users_list.selectedItems()]
-			QMessageBox.information(self, "group status", self.send_request("create_group", {"name": name, "users": selected_users}))
+			selected_users = [item.text() for item in self.users_list.selectedItems()]
+			# QMessageBox.information(self, "group status", self.send_request("create_group", {"name": name, "users": selected_users}))
+			# item.text() for item in lang_list.selectedItems()
 			self.groups_window.close()
 
 		self.groups_window = QWidget()
@@ -475,8 +476,11 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		self.profile_screen.show()
 
 if __name__ == "__main__":
-	app = QApplication(sys.argv)
-	GUI = ChatAppGUI()
-	print(GUI)
-	GUI.show()
-	sys.exit(app.exec())
+	try:
+		app = QApplication(sys.argv)
+		GUI = ChatAppGUI()
+		print(GUI)
+		GUI.show()
+		sys.exit(app.exec())
+	except Exception as e:
+		custom_log(f"[CLIENT] error {error} happened")

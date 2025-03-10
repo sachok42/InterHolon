@@ -149,7 +149,7 @@ full_names_to_phunspell_names = {
 	"Ukrainian": "uk_UA"	# Ukranian (Ukraine)
 }
 
-mwt_languages = {"he", "en"}
+mwt_languages = {"he", "en", "de"}
 
 POS_color_map_qt = dict()
 for color in POS_color_map:
