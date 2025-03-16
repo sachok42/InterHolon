@@ -1,4 +1,3 @@
-import logging
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
@@ -7,41 +6,7 @@ import os
 import json
 import datetime
 from language_protocol import *
-
-# logger = logging.getLogger(__name__)
-logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
-logging.basicConfig(filename='error_log.log', encoding='utf-8', level=logging.DEBUG)
-
-standard_font = ("Arial", 14)
-
-def setup_logger(logger_name, log_file, level=logging.DEBUG):
-	l = logging.getLogger(logger_name)
-	formatter = logging.Formatter('%(asctime)s : %(message)s')
-	fileHandler = logging.FileHandler(log_file, mode='w')
-	fileHandler.setFormatter(formatter)
-	streamHandler = logging.StreamHandler()
-	streamHandler.setFormatter(formatter)
-
-	l.setLevel(level)
-	l.addHandler(fileHandler)
-	# l.addHandler(streamHandler)    
-
-# setup_logger('chatting_log', 'chatting_log.log')
-# setup_logger('error_log', 'error_log.log')
-logger = logging.getLogger('chatting_log.log')
-error_logger = logging.getLogger('error_log.log')
-formatter = logging.Formatter('%(asctime)s : %(message)s')
-fileHandler = logging.FileHandler('chatting_log.log', mode='w')
-fileHandler.setFormatter(formatter)
-logger.addHandler(fileHandler)
-basic_buffer_size = 1024
-
-def custom_log(text, used_logger=None):
-	if used_logger is None:
-		used_logger = logger
-	message = f"{datetime.datetime.now()} {text}"
-	logger.info(message)
-	print(message)
+from log_protocol import *
 
 standard_key_size = 2048
 def generate_key():
