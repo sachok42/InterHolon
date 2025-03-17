@@ -1,6 +1,6 @@
 from PyQt6.QtGui import QColor, QTextCharFormat
 
-languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukranian"]
+languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukrainian", "Arabic"]
 # Function to validate language structure (optional utility)
 def validate_language_tree(language_tree):
 	"""
@@ -117,7 +117,7 @@ shortnames_to_phunspell_names = {
 	"cs": "cs_CZ",  # Czech (Czech Republic)
 	"th": "th_TH",  # Thai (Thailand)
 	"vi": "vi_VN",  # Vietnamese (Vietnam)
-	"uk": "uk_UA" 	# Ukranian (Ukrain)
+	"uk": "uk_UA" 	# Ukrainian (Ukrain)
 }
 
 full_names_to_phunspell_names = {
@@ -146,7 +146,7 @@ full_names_to_phunspell_names = {
 	"Czech": "cs_CZ",    	# Czech (Czech Republic)
 	"Thai": "th_TH",     	# Thai (Thailand)
 	"Vietnamese": "vi_VN",  # Vietnamese (Vietnam)
-	"Ukrainian": "uk_UA"	# Ukranian (Ukraine)
+	"Ukrainian": "uk_UA"	# Ukrainian (Ukraine)
 }
 
 mwt_languages = {"he", "en", "de"}

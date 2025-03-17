@@ -2,7 +2,7 @@ import logging
 import datetime
 
 # logger = logging.getLogger(__name__)
-# logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename='chatting_log.log', encoding='utf-8', level=logging.DEBUG)
 # logging.basicConfig(filename='error_log.log', encoding='utf-8', level=logging.DEBUG)
 
 standard_font = ("Arial", 14)
@@ -28,6 +28,7 @@ formatter = logging.Formatter('%(asctime)s : %(message)s')
 fileHandler = logging.FileHandler('chatting_log.log', mode='w')
 fileHandler.setFormatter(formatter)
 logger.addHandler(fileHandler)
+error_logger.addHandler(fileHandler)
 basic_buffer_size = 1024
 
 def custom_log(text, used_logger=None):

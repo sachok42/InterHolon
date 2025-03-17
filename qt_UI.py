@@ -178,7 +178,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 						# custom_log(f"[CLIENT] on load_messages_GUI tag-coloring: word is {word}")
 						end_cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.KeepAnchor)
 						position_end = cursor.position()
-						print(position_start, position_end)
+						# print(position_start, position_end)
 						cursor.setPosition(position_start, QTextCursor.MoveMode.MoveAnchor)
 						cursor.setPosition(position_end, QTextCursor.MoveMode.KeepAnchor)
 						# custom_log(f"Selected text is {cursor.selectedText()}")
@@ -209,7 +209,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		self.chat_display.append(f"{sender}: {content}\n{timestamp}\n")
 
 	def load_more(self):
-		messages = self.load_messages(self.chat_name, True)
+		messages = self.load_messages(self.current_chat, True)
 		for sender, content, timestamp in messages[::-1]:
 			self.chat_display.insertPlainText(f"{sender}: {content}\n{timestamp}\n")
 
@@ -366,6 +366,25 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		requests_names = [request[0] for request in requests] # names
 		self.requests_list.addItems(requests_names)
 
+	def load_mistake_data(self, mistake_header):
+		# self.mistake_display.config(state=tk.NORMAL)
+		# self.mistake_display.delete(1.0, tk.END)
+
+		ID = int(mistake_header.split()[1])
+		
+		response = self.send_request("load_typo_message", {"id": ID})
+
+		self.mistake_display.clear()
+		self.mistake_display.insertPlainText(f"{response['receiver']}:")
+		self.mistake_display.insertPlainText(f"{response['content_start']}")
+		self.mistake_display.insertPlainText(f" {response['content_mistake'].upper()} ")
+		self.mistake_display.insertPlainText(f"{response['content_end']}\n")
+		self.mistake_display.insertPlainText(f"{response['corrected_word']}\n")
+		self.mistake_display.insertPlainText(f"{response['timestamp']}\n")
+
+		self.mistake_display.insertPlainText("the end\n")
+		# self.mistake_display.config(state=tk.DISABLED)
+
 	def open_mistakes_window(self):
 		self.mistakes_window = QWidget()
 		self.mistakes_window.setWindowTitle("Mistakes")
@@ -483,4 +502,4 @@ if __name__ == "__main__":
 		GUI.show()
 		sys.exit(app.exec())
 	except Exception as e:
-		custom_log(f"[CLIENT] error {error} happened")
+		custom_log(f"[CLIENT] error {e} happened")

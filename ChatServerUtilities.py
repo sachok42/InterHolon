@@ -12,8 +12,8 @@ class ChatServerUtilities:
 	def __init__(self):
 		self.POS_taggers = {}
 		self.spellcheckers = {}
-		self.tag_text("English", 'hello')
-
+		for language in languages:
+			self.tag_text(language, '')
 
 	def tag_text(self, language, text):
 		language = language_names_to_shortnames[language]
