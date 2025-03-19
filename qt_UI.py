@@ -173,8 +173,12 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 					for word, POS_tag in parsed_text:
 						# self.chat_display.insertPlainText(f'<{POS_tag}>{word}</{POS_tag}> ')
 						cursor.movePosition(QTextCursor.MoveOperation.End)
+						if POS_tag == "PUNCT" and word != "—":
+							cursor.deletePreviousChar()
+
 						position_start = cursor.position()
 						self.chat_display.insertPlainText(f'{word} ')
+
 						# custom_log(f"[CLIENT] on load_messages_GUI tag-coloring: word is {word}")
 						end_cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.KeepAnchor)
 						position_end = cursor.position()
@@ -183,15 +187,14 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 						cursor.setPosition(position_end, QTextCursor.MoveMode.KeepAnchor)
 						# custom_log(f"Selected text is {cursor.selectedText()}")
 
-						frmt = QTextCharFormat()
-						frmt.setForeground(QColor(POS_color_map[POS_tag]))
+						text_format = QTextCharFormat()
+						text_format.setForeground(QColor(POS_color_map[POS_tag]))
 						# self.chat_display.setTextCursor(cursor)
-						cursor.mergeCharFormat(frmt)
-					
+						cursor.mergeCharFormat(text_format)
 					cursor.movePosition(QTextCursor.MoveOperation.End)
-					frmt = QTextCharFormat()
-					frmt.setForeground(QColor("white"))	
-					cursor.mergeCharFormat(frmt)
+					text_format = QTextCharFormat()
+					text_format.setForeground(QColor("white"))	
+					cursor.mergeCharFormat(text_format)
 
 					self.chat_display.append(f"\n{timestamp}\n")
 					custom_log(f"[CLIENT] on load_messages_GUI: message is loaded tagged")
@@ -209,9 +212,13 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		self.chat_display.append(f"{sender}: {content}\n{timestamp}\n")
 
 	def load_more(self):
+		def insert_text_at_beginning(text, display):
+			current_text = display.toPlainText()
+			display.setPlainText(text + current_text)
+
 		messages = self.load_messages(self.current_chat, True)
-		for sender, content, timestamp in messages[::-1]:
-			self.chat_display.insertPlainText(f"{sender}: {content}\n{timestamp}\n")
+		for sender, content, timestamp, POS_tag in messages[-1::-1]:
+			insert_text_at_beginning(f"{sender}: {content}\n{timestamp}\n", self.chat_display)
 
 	def open_chat_window(self):
 		central_widget = QWidget()
