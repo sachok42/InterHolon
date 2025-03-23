@@ -113,11 +113,11 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		else:
 			QMessageBox.critical(self, "Error", response.get("message", "Unknown error."))
 
-	def load_messages_GUI(self, chat_name):
-		def pack_tags(words, tags):
-			# print(f"packing tags: words are {words}, tags are {tags}")
-			return [(words[i], tags[i]) for i in range(len(words))]
+	def pack_tags(self, words, tags):
+		# print(f"packing tags: words are {words}, tags are {tags}")
+		return [(words[i], tags[i]) for i in range(len(words))]
 
+	def load_messages_GUI(self, chat_name):
 		def color_tagged_text(text_edit):
 			cursor = text_edit.textCursor()
 
@@ -166,32 +166,35 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 			for message in messages:
 				custom_log(f"[CLIENT] on load_messages_GUI: started loading message {message}")
 				sender, timestamp, content, POS_tags = message
+				cursor.movePosition(QTextCursor.MoveOperation.End)
 
 				if POS_tags:
-					parsed_text = pack_tags(content.split(), POS_tags.split())
+					parsed_text = self.pack_tags(content.split(), POS_tags.split())
 
+					# cursor.movePosition(QTextCursor.MoveOperation.End)
 					for word, POS_tag in parsed_text:
 						# self.chat_display.insertPlainText(f'<{POS_tag}>{word}</{POS_tag}> ')
-						cursor.movePosition(QTextCursor.MoveOperation.End)
 						if POS_tag == "PUNCT" and word != "—":
 							cursor.deletePreviousChar()
 
 						position_start = cursor.position()
 						self.chat_display.insertPlainText(f'{word} ')
-
-						# custom_log(f"[CLIENT] on load_messages_GUI tag-coloring: word is {word}")
-						end_cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.KeepAnchor)
 						position_end = cursor.position()
+						cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor, len(word) + 1)
+						custom_log(f"[CLIENT] on load_messages_GUI tag-coloring: word is {word}")
+						# end_cursor.movePosition(QTextCursor.MoveOperation.End, QTextCursor.MoveMode.KeepAnchor)
+						# position_end = cursor.position()
 						# print(position_start, position_end)
-						cursor.setPosition(position_start, QTextCursor.MoveMode.MoveAnchor)
-						cursor.setPosition(position_end, QTextCursor.MoveMode.KeepAnchor)
-						# custom_log(f"Selected text is {cursor.selectedText()}")
-
+						# cursor.setPosition(position_start, QTextCursor.MoveMode.MoveAnchor)
+						# cursor.setPosition(position_end, QTextCursor.MoveMode.KeepAnchor)
+						custom_log(f"Selected text is {cursor.selectedText()}, POS_tag is {POS_tag}, POS_color is {POS_color_map[POS_tag]}")
 						text_format = QTextCharFormat()
 						text_format.setForeground(QColor(POS_color_map[POS_tag]))
-						# self.chat_display.setTextCursor(cursor)
 						cursor.mergeCharFormat(text_format)
-					cursor.movePosition(QTextCursor.MoveOperation.End)
+						# self.chat_display.setTextCursor(cursor)
+						cursor.setPosition(position_end, QTextCursor.MoveMode.MoveAnchor)
+						cursor.movePosition(QTextCursor.MoveOperation.Right)
+					# cursor.movePosition(QTextCursor.MoveOperation.End)
 					text_format = QTextCharFormat()
 					text_format.setForeground(QColor("white"))	
 					cursor.mergeCharFormat(text_format)
@@ -217,8 +220,17 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 			display.setPlainText(text + current_text)
 
 		messages = self.load_messages(self.current_chat, True)
-		for sender, content, timestamp, POS_tag in messages[-1::-1]:
-			insert_text_at_beginning(f"{sender}: {content}\n{timestamp}\n", self.chat_display)
+		cursor = self.chat_display.textCursor()
+		cursor.movePosition(QTextCursor.MoveOperation.Start)
+		# cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, len + 1)
+		for sender, timestamp, content, POS_tags in messages:
+			if POS_tags:
+				cursor.insertText(f"{sender}\n")
+				words = self.pack_tags(content.split(), POS_tags.split())
+				cursor.insertText(f"{timestamp}\n")
+			else:
+				insert_text_at_beginning(f"{sender}: {content}\n{timestamp}\n", self.chat_display)
+
 
 	def open_chat_window(self):
 		central_widget = QWidget()
