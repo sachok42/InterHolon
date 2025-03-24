@@ -83,7 +83,7 @@ class ChatServer(ChatServerUtilities):
 					response = self.create_group(conn, request_data)
 		except Exception as e:
 			response = {"status": "error", "message": "unknown error"}
-			error_logger.error(f"[SERVER] error: {e}")
+			logger.error(f"[SERVER] error: {e}")
 
 		# Add more actions as needed...
 		logger.info(f"[SERVER] sent response: response is {response}")
@@ -156,7 +156,7 @@ class ChatServer(ChatServerUtilities):
 		cursor = conn.cursor()
 		cursor.execute("""
 			SELECT language_id FROM user_languages WHERE user_id = ?
-			""", (request_data["user1"],))
+			""", (self.get_user_id(conn, request_data["user"]),))
 		ids = self.flatten_array(cursor.fetchall())
 		languages = self.replenish_ids_with_languages_flat(conn, ids)
 		response = {"status": "success", "languages": languages}

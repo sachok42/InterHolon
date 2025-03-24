@@ -71,9 +71,13 @@ class ChatServerUtilities:
 		result = [self.get_username(cursor, element) for element in elements]
 		return result
 
+	def get_language(self, cursor, ID):
+		cursor.execute("""SELECT name FROM languages WHERE id = ?""", (ID,))
+		return cursor.fetchone()[0]
+
 	def replenish_ids_with_languages_flat(self, conn, elements):
 		cursor = conn.cursor()
-		result = [self.get_username(cursor, element) in elements]
+		result = [self.get_language(cursor, element) for element in elements]
 		return result
 
 	def get_chat_name(self, conn, ID):

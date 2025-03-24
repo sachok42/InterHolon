@@ -181,12 +181,9 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 						text_format.setForeground(QColor(POS_color_map[POS_tag]))
 						cursor.mergeCharFormat(text_format)
 						position_start = cursor.position()
-						# self.chat_display.insertPlainText(f'{word} ')
 						cursor.insertText(f'{word} ')
-						# position_end = cursor.position()
-						# cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor, len(word) + 1)
-						custom_log(f"[CLIENT] on load_messages_GUI tag-coloring: word is {word}")
-						custom_log(f"Selected text is {cursor.selectedText()}, POS_tag is {POS_tag}, POS_color is {POS_color_map[POS_tag]}")
+						# custom_log(f"[CLIENT] on load_messages_GUI tag-coloring: word is {word}")
+						# custom_log(f"Selected text is {cursor.selectedText()}, POS_tag is {POS_tag}, POS_color is {POS_color_map[POS_tag]}")
 					cursor.movePosition(QTextCursor.MoveOperation.End)
 					text_format = QTextCharFormat()
 					text_format.setForeground(QColor("white"))	
@@ -301,6 +298,12 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		response = self.send_request("accept_request", {"receiver": self.current_user, "sender": self.chosen_request})
 
 	def open_requests_window(self):
+		def make_request(self):
+			name = self.request_input.get()
+			response = self.send_request("make_request", {"sender": self.current_user, "receiver": name})
+			QMessageBox.information("Request sent")
+			# messagebox.showinfo("request result", f"make_request status: {response['status']}")
+
 		self.requests_window = QWidget()
 		self.requests_window.setWindowTitle("Requests")
 		self.requests_window.resize(800, 450)
@@ -326,7 +329,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 
 		self.send_request_button = QPushButton("Send request")
 		self.send_request_button.setStyleSheet("background-color: #0078D7; color: white;")
-		self.send_request_button.clicked.connect(self.make_request)
+		self.send_request_button.clicked.connect(make_request)
 		layout.addWidget(self.send_request_button)
 
 		self.accept_request_button = QPushButton("Accept request")

@@ -29,7 +29,7 @@ class ChatAppLogic:
 		# custom_log(f"[CLIENT] my ")
 
 	def get_languages(self):
-		response = self.send_request("get_languages", {"user1": self.current_user})
+		response = self.send_request("get_languages")
 		return response["languages"]
 
 	def choose_language(self, language):
