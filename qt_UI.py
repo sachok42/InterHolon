@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QTimer
 import sys
 from chat_client_logic import ChatAppLogic
 from protocol import *
+from messagebox import PushNotification
 
 class ChatAppGUI(ChatAppLogic, QMainWindow):
 	def __init__(self):
@@ -26,6 +27,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		self.tagging = True
 		self.current_language = "English"
 		self.current_chat = None
+		self.requests_mode = None
 
 		self.open_login_screen()
 
@@ -266,12 +268,17 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		input_frame.addWidget(self.language_selector)
 
 		self.load_chats()
+
 	def accept_request(self):
 		response = self.send_request("accept_request", {"receiver": self.current_user, "sender": self.chosen_request})
 
+	def load_request_data(self, request):
+		self.chosen_request = request
+		self.send_request("load_request", {"requester": request})
+	
 	def open_requests_window(self):
-		def make_request(self):
-			name = self.request_input.get()
+		def make_request():
+			name = self.request_input.text()
 			response = self.send_request("make_request", {"sender": self.current_user, "receiver": name})
 			QMessageBox.information("Request sent")
 			# messagebox.showinfo("request result", f"make_request status: {response['status']}")
@@ -311,6 +318,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 
 		self.requests_window.setLayout(layout)
 		self.requests_window.show()
+		self.requests_mode = "Incoming"
 		self.load_requests()
 
 	def open_group_creation_window(self):
