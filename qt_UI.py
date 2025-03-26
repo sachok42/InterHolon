@@ -101,6 +101,9 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 	def automatic_load(self):
 		QTimer.singleShot(self.loading_period * 1000, self.load_chats)
 
+	def get_updates(self):
+		self.send_request("get_updates", {self.current_chat})
+
 	def send_message(self):
 		recipient = self.current_chat
 		content = self.user_input.toPlainText().strip()
@@ -141,6 +144,11 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 				custom_log(f"[CLIENT] on load_messages_GUI: started loading message {message}")
 				sender, timestamp, content, POS_tags = message
 				cursor.movePosition(QTextCursor.MoveOperation.End)
+				text_format = QTextCharFormat()
+				text_format.setForeground(QColor("white"))	
+				cursor.mergeCharFormat(text_format)
+				cursor.insertText(f"{message[0]}:\n")
+				# cursor.movePosition(QTextCursor.MoveOperation.End)
 
 				if POS_tags:
 					parsed_text = self.pack_tags(content.split(), POS_tags.split())
@@ -382,6 +390,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		self.mistake_display.insertPlainText(f"{response['content_start']}")
 		self.mistake_display.insertPlainText(f" {response['content_mistake'].upper()} ")
 		self.mistake_display.insertPlainText(f"{response['content_end']}\n")
+		self.mistake_display.insertPlainText(f"{response["original_word"]}\n")
 		self.mistake_display.insertPlainText(f"{response['corrected_word']}\n")
 		self.mistake_display.insertPlainText(f"{response['timestamp']}\n")
 
@@ -404,7 +413,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		layout.addWidget(self.mistake_display)
 
 		understood_button = QPushButton("Understood")
-		understood_button.clicked.connect(self.send_message)
+		# understood_button.clicked.connect(self.send_message)
 		layout.addWidget(understood_button)
 
 		self.mistakes_window.setLayout(layout)

@@ -56,6 +56,7 @@ def sql_db_init(cursor):
 			message_id INTEGER,
 			word_number INTEGER,
 			corrected_word TEXT,
+			wrong_word TEXT,
 			FOREIGN KEY (message_id) REFERENCES messages(id),
 			FOREIGN KEY (language_id) REFERENCES languages(id),
 			FOREIGN KEY (user_id) REFERENCES users (id)

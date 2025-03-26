@@ -17,7 +17,7 @@ def validate_language_tree(language_tree):
 				raise TypeError(f"Languages under '{subfamily}' in '{family}' must be lists.")
 
 # Base group categories for organizing languages
-base_groups = ["Collective", "Collective2", "Collective3", "Collective3"] # Placeholder for broader linguistic categories or roles
+base_groups = ["Collective", "Collective2", "Collective3", "Collective4"] # Placeholder for broader linguistic categories or roles
 
 # Language families and subfamilies with examples
 LANGUAGE_TREE = {

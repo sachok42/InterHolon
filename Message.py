@@ -24,7 +24,7 @@ class Message:
 		for i in range(len(words)):
 			word = words[i]
 			# print(f"i is {i}, word is {word}")
-			if not spellchecker.lookup(word.lower()):
+			if not spellchecker.lookup(word):
 				corrections_lowered = [variant.lower() for variant in spellchecker.suggest(word)]
 				logger.info(f"[MESSAGE] on analyze: found mistake, suggestions are {', '.join(corrections_lowered)}")
 				try:
@@ -32,6 +32,6 @@ class Message:
 				except:
 					correction = "unknown"
 
-				mistakes.append({"type": "typo", "word_number": i, "corrected_word": correction})
+				mistakes.append({"type": "typo", "word_number": i, "corrected_word": correction, "original": word})
 		print(f"mistakes are {mistakes}")
 		return mistakes

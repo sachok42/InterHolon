@@ -121,7 +121,7 @@ class ChatServer(ChatServerUtilities):
 
 	def load_typo_message(self, cursor, conn, request_data):
 		cursor.execute("""
-			SELECT word_number, corrected_word, message_id FROM typos WHERE id = ?
+			SELECT word_number, corrected_word, message_id, wrong_word FROM typos WHERE id = ?
 			""", (request_data["id"],))
 		mistake = cursor.fetchone()
 		logger.info(f"[SERVER] on load_typo_message mistake is {mistake}")
@@ -146,7 +146,8 @@ class ChatServer(ChatServerUtilities):
 		"content_mistake": wrong_word,
 		"content_end": post_mistake,
 		"timestamp": timestamp,
-		"corrected_word": mistake[1]
+		"corrected_word": mistake[1],
+		"original_word": mistake[3]
 		}
 
 		return response
@@ -166,7 +167,7 @@ class ChatServer(ChatServerUtilities):
 		# cursor = conn.cursor()
 		logger.info(f"[SERVER] on get_mistakes started the function")
 		cursor.execute("""
-			SELECT id, message_id, word_number, corrected_word FROM typos WHERE user_id = ?
+			SELECT id, message_id, word_number, corrected_word, wrong_word FROM typos WHERE user_id = ?
 			""", (self.get_user_id(conn, request_data['sender']),))
 		logger.info(f"[SERVER] on get_mistakes started fetching")
 		typos = cursor.fetchall()
@@ -185,8 +186,8 @@ class ChatServer(ChatServerUtilities):
 		return response
 
 	def get_personal_messages(self, cursor, conn, request_data):
-		logger.info(f"[SERVER] getting personal messages of {request_data['user1']} and {request_data['user2']}")
-		id1 = self.get_user_id(conn, request_data['user1'])
+		logger.info(f"[SERVER] getting personal messages of {request_data['user']} and {request_data['user2']}")
+		id1 = self.get_user_id(conn, request_data['user'])
 		id2 = self.get_user_id(conn, request_data['user2'])
 		cursor.execute("""
 			SELECT chat_id FROM contacts WHERE id1 = ? AND id2 = ? OR id1 = ? AND id2 = ? 
