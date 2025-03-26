@@ -219,11 +219,13 @@ class ChatAppGUI(ChatAppLogic):
 	def load_request_data(self, request):
 		self.chosen_request = request
 		self.send_request("load_request", {"requester": request})
+		self.load_requests()
 
 	def make_request(self):
 		name = self.request_input.get()
 		response = self.send_request("make_request", {"sender": self.current_user, "receiver": name})
-		messagebox.showinfo("request result", f"make_request status: {response['status']}")
+		# messagebox.showinfo("request result", f"make_request status: {response['status']}")
+		self.load_requests()
 
 	def accept_request(self):
 		response = self.send_request("accept_request", {"receiver": self.current_user, "sender": self.chosen_request})

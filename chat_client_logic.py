@@ -1,5 +1,3 @@
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
 import socket
 import json
 from protocol import *
@@ -80,6 +78,7 @@ class ChatAppLogic:
 		if response["status"] == "success":
 			return response["messages"]
 		else:
-			messagebox.showerror("Error", response.get("message", "Unknown error."))
+			# messagebox.showerror("Error", response.get("message", "Unknown error."))
+			logger.error(f"[CLIENT] error on load_messages: error is {"unknown error"}")
 			return None
 		# custom_log(f"[CLIENT] loading messages from chat {chat_name} returned {response}")

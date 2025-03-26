@@ -71,6 +71,10 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		else:
 			QMessageBox.critical(self, "Error", "Username cannot be empty.")
 
+	def switch_request_mode(self, mode):
+		self.requests_mode = mode
+		self.load_requests()
+
 	def switch_chat_mode(self, mode):
 		logger.info(f"[CLIENT] on switch_chat_mode mode is {mode}")
 		self.chat_list.clear()
@@ -283,7 +287,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		def make_request():
 			name = self.request_input.text()
 			response = self.send_request("make_request", {"sender": self.current_user, "receiver": name})
-			QMessageBox.information("Request sent")
+			QMessageBox.information(self, "Request notification", f"Request sent to {name}")
 			# messagebox.showinfo("request result", f"make_request status: {response['status']}")
 
 		self.requests_window = QWidget()
@@ -321,14 +325,14 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 
 		self.requests_window.setLayout(layout)
 		self.requests_window.show()
-		self.requests_mode = "Incoming"
+		self.requests_mode = "Outgoing"
 		self.load_requests()
 
 	def open_group_creation_window(self):
 		def make_group():
 			name = self.group_entry.text().strip()
 			selected_users = [item.text() for item in self.users_list.selectedItems()]
-			QMessageBox.information(self, "group status", self.send_request("create_group", {"name": name, "users": selected_users}))
+			QMessageBox.information(self, "group status", f'{self.send_request("create_group", {"name": name, "users": selected_users})["message"]}')
 			# item.text() for item in lang_list.selectedItems()
 			self.groups_window.close()
 

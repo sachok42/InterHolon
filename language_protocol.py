@@ -1,6 +1,6 @@
 from PyQt6.QtGui import QColor, QTextCharFormat
 
-languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukrainian", "Arabic"]
+languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukrainian"]
 # Function to validate language structure (optional utility)
 def validate_language_tree(language_tree):
 	"""
@@ -17,7 +17,7 @@ def validate_language_tree(language_tree):
 				raise TypeError(f"Languages under '{subfamily}' in '{family}' must be lists.")
 
 # Base group categories for organizing languages
-base_groups = ["Collective", "Indo-European", "Semitic", "Uralic"] # Placeholder for broader linguistic categories or roles
+base_groups = ["Collective", "Collective2", "Collective3", "Collective3"] # Placeholder for broader linguistic categories or roles
 
 # Language families and subfamilies with examples
 LANGUAGE_TREE = {

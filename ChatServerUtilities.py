@@ -101,9 +101,11 @@ class ChatServerUtilities:
 			""", (group_id, last_id))
 		messages = cursor.fetchall()[-1::-1]
 		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10", (group_id, last_id))
-		ids = self.flatten_array(cursor.fetchall()) + [1e9]
+		ids = self.flatten_array(cursor.fetchall()) + [int(1e9)]
 		messages = self.replenish_ids_with_usernames(conn, messages)
 		last_id = min(ids)
+		if last_id == len(messages) == 0:
+			last_id = 0
 		# messages_tagged = [(messages[i][:-1] + [tags[i]]) for i in range(len(messages))]
 		return messages, last_id
 
