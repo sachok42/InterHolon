@@ -1,6 +1,6 @@
 from PyQt6.QtGui import QColor, QTextCharFormat
 
-languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukrainian"]
+languages = ["English", "German", "Spanish", "Russian", "Hebrew", "Ukrainian", "Korean"]
 # Function to validate language structure (optional utility)
 def validate_language_tree(language_tree):
 	"""
