@@ -9,6 +9,7 @@ class Message:
 		self.language = language
 
 	def analyze(self, spellchecker):
+		custom_log(type(spellchecker))
 		def preprocess_text(text):
 			# Remove punctuation
 			text = text.translate(str.maketrans("", "", string.punctuation))
@@ -25,12 +26,7 @@ class Message:
 			word = words[i]
 			# print(f"i is {i}, word is {word}")
 			if not spellchecker.lookup(word):
-				corrections_lowered = [variant.lower() for variant in spellchecker.suggest(word)]
-				logger.info(f"[MESSAGE] on analyze: found mistake, suggestions are {', '.join(corrections_lowered)}")
-				try:
-					correction = corrections_lowered[0]
-				except:
-					correction = "unknown"
+				correction = spellchecker.correction(word)
 
 				mistakes.append({"type": "typo", "word_number": i, "corrected_word": correction, "original": word})
 		print(f"mistakes are {mistakes}")

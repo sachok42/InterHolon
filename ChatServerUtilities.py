@@ -3,7 +3,9 @@ import numpy as np
 import sqlite3
 from POS_tagger import POS_tagger
 from phunspell import Phunspell
+import phunspell
 from log_protocol import create_file_logger
+import spellchecker as sp
 
 create_file_logger("language_logger")
 lang_logger = logging.getLogger("language_logger")
@@ -23,7 +25,9 @@ class ChatServerUtilities:
 
 	def spellcheck_text(self, language, message):
 		if language not in self.spellcheckers:
-			self.spellcheckers[language] = Phunspell(full_names_to_phunspell_names[language])
+			if language_names_to_shortnames[language] in good_spellchecking_supporting:
+				sellf.spellcheckers[language] = Spellchecker(sp.SpellChecker(language=language_names_to_shortnames[language]))
+			self.spellcheckers[language] = Spellchecker(Phunspell(full_names_to_phunspell_names[language]))
 		return message.analyze(self.spellcheckers[language])
 
 	def get_user_id(self, conn, user):

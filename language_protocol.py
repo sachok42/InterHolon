@@ -149,6 +149,20 @@ full_names_to_phunspell_names = {
 	"Ukrainian": "uk_UA"	# Ukrainian (Ukraine)
 }
 
+good_spellcheck_supporting = {
+	'en',
+	'es',
+	'fr',
+	'pt',
+	'de',
+	'it',
+	'ru',
+	'ar',
+	'eu',
+	'lv',
+	'nl'
+}
+
 mwt_languages = {"he", "en", "de"}
 
 POS_color_map_qt = dict()
