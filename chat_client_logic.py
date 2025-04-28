@@ -5,7 +5,6 @@ import logging
 import random
 
 class ChatAppLogic:
-
 	def __init__(self):
 		self.SERVER_ADDRESS = (input() or "127.0.0.1", 12345)  # Adjust as needed
 		custom_log("\n\nClient on")
@@ -35,13 +34,10 @@ class ChatAppLogic:
 
 	def send_request(self, action, data={}):
 		try:
-			# self.client_socket.connect(self.SERVER_ADDRESS)
 			data["user"] = self.current_user
 			request = {"action": action, **data}
 			message = encrypt_message(json.dumps(request), self.public_key)
-			# custom_log(f"[CLIENT] encrypted_message type is {type(message)}")
 			send_message_by_parts(self.client_socket, message, self.private_key)
-			# self.client_socket.send(message)
 			custom_log(f"[CLIENT] sent request: action is {action} data is {data}")
 			encrypted_message = get_message_by_parts(self.client_socket, self.public_key)
 			custom_log(f"[CLIENT] on send_request: encrypted_message length is {len(encrypted_message)}")
