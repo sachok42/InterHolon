@@ -391,7 +391,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		self.mistake_display.insertPlainText(f"{response['content_start']}")
 		self.mistake_display.insertPlainText(f" {response['content_mistake'].upper()} ")
 		self.mistake_display.insertPlainText(f"{response['content_end']}\n")
-		self.mistake_display.insertPlainText(f"{response["original_word"]}\n")
+		self.mistake_display.insertPlainText(f"{response['original_word']}\n")
 		self.mistake_display.insertPlainText(f"{response['corrected_word']}\n")
 		self.mistake_display.insertPlainText(f"{response['timestamp']}\n")
 
