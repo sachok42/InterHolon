@@ -264,6 +264,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		top_bar_frame.addWidget(make_group_button)
 
 		self.chat_display = QTextEdit()
+		self.chat_display.setStyleSheet("background-color: rgb(0, 0, 0);")
 		self.chat_display.setReadOnly(True)
 		right_layout.addWidget(self.chat_display)
 
