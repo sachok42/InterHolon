@@ -3,7 +3,7 @@ InterHolon is a messenger app for language learners. It includes both basic chat
 Instruction on launch:
   1) Start a server (chat_server.py)
   2) Start a client in a local network (qt_UI.py)
-  3) Connect by IP
+  3) Enter the server IP in the client window (if both are on the same device, you can enter nothing)
 
 Libraries required:
   Client:
