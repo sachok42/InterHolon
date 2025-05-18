@@ -9,6 +9,7 @@ class Spellchecker:
 		return type(self._spellchecker) == sp.spellchecker.SpellChecker
 
 	def lookup(self, word):
+		custom_log(f"[Spellchecker] on lookup: word is {word}")
 		if self.Im_Phunspell():
 			return self._spellchecker.lookup(word)
 
@@ -19,6 +20,7 @@ class Spellchecker:
 		raise Exception
 	
 	def correction(self, word):
+		custom_log(f"[Spellchecker] on correction: word is {word}")
 		if self.Im_Phunspell():
 			corrections_lowered = [variant.lower() for variant in self._spellchecker.suggest(word)]
 			logger.info(f"[MESSAGE] on analyze: found mistake, suggestions are {', '.join(corrections_lowered)}")

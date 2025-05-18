@@ -6,6 +6,8 @@ from phunspell import Phunspell
 import phunspell
 from log_protocol import create_file_logger
 import spellchecker as sp
+from language_protocol import good_spellchecking_supporting
+from Spellchecker import Spellchecker
 
 create_file_logger("language_logger")
 lang_logger = logging.getLogger("language_logger")
@@ -24,10 +26,15 @@ class ChatServerUtilities:
 		return self.POS_taggers[language].tag_text(text)
 
 	def spellcheck_text(self, language, message):
+		custom_log(f"[ChatServerUtilities] on spellcheck_text: message is {message}")
 		if language not in self.spellcheckers:
 			if language_names_to_shortnames[language] in good_spellchecking_supporting:
 				sellf.spellcheckers[language] = Spellchecker(sp.SpellChecker(language=language_names_to_shortnames[language]))
-			self.spellcheckers[language] = Spellchecker(Phunspell(full_names_to_phunspell_names[language]))
+			else:
+				self.spellcheckers[language] = Spellchecker(Phunspell(full_names_to_phunspell_names[language]))
+			custom_log(f"[ChatServerUtilities] on spellcheck_text: created spellchecker for language {language}")
+		else:
+			custom_log(f"[ChatServerUtilities] on spellcheck_text: no new spellchecker needed")
 		return message.analyze(self.spellcheckers[language])
 
 	def get_user_id(self, conn, user):

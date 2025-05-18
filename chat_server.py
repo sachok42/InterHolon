@@ -387,19 +387,19 @@ class ChatServer(ChatServerUtilities):
 
 	def check_for_updates(self, conn, request_data):
 		cursor = conn.cursor()
-		print(1)
+		# print(1)
 		chat_id = self.get_chat_id(conn, request_data["chat_name"])
-		print(2)
+		# print(2)
 		biggest_id = request_data["biggest_id"]
-		print(3)
+		# print(3)
 		cursor.execute("SELECT sender_id, timestamp, content, POS_tags FROM messages WHERE chat_id = ? AND id > ?", (chat_id, biggest_id))
 		messages = cursor.fetchall()
 		messages = self.replenish_ids_with_usernames(conn, messages)
-		print(4)
+		# print(4)
 		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id > ?", (chat_id, biggest_id))
-		print(4.5)
+		# print(4.5)
 		biggest_id = max(self.flatten_array(cursor.fetchall()) + [-1])
-		print(5)
+		# print(5)
 		return {"messages": messages, "biggest_id": biggest_id}
 
 	def handle_client(self, client_socket):

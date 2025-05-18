@@ -149,7 +149,7 @@ full_names_to_phunspell_names = {
 	"Ukrainian": "uk_UA"	# Ukrainian (Ukraine)
 }
 
-good_spellcheck_supporting = {
+good_spellchecking_supporting = {
 	'en',
 	'es',
 	'fr',
