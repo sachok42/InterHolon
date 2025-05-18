@@ -23,6 +23,7 @@ class ChatAppLogic:
 		received_data = self.client_socket.recv(basic_buffer_size)
 		custom_log(f"[CLIENT] got pem starting {received_data.hex()[:10]}")
 		self.public_key = serialization.load_pem_public_key(received_data)
+		self.biggest_id = -1
 		# custom_log(f"[CLIENT] my ")
 
 	def get_languages(self):
@@ -58,18 +59,27 @@ class ChatAppLogic:
 			case "new_message":
 				pass
 
+	def check_for_updates(self, chat_name, biggest_id_used=-1):
+		action = "check_for_updates"
+		data = {"chat_name": chat_name, "biggest_id": biggest_id_used}
+		response = self.send_request(action, data)
+		return response["messages"], response["biggest_id"]
+
 	def load_messages(self, chat_name, last_id_usage=False, update=False):
 		custom_log(f"[CLIENT] on_load_messages: from chat {chat_name}")
 		action = "get_group_messages" if self.chat_mode == "group" else "get_personal_messages"
 		data = {
 			"group_name" if self.chat_mode == "group" else "user2": chat_name,
 			"user1": self.current_user,
-			"last_id": self.last_id if last_id_usage else 1e9
+			"last_id": self.last_id if last_id_usage else 1e9,
+			"first_load": False if last_id_usage else True
 		}
 		
 		response = self.send_request(action, data)
 		if not update:
 			self.last_id = response["last_id"]
+		if not last_id_usage:
+			self.biggest_id = response["biggest_id"]
 		custom_log(f"[CLIENT] on_load_messages: last_id is {self.last_id}")
 		if response["status"] == "success":
 			return response["messages"]

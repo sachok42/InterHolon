@@ -81,6 +81,8 @@ class ChatServer(ChatServerUtilities):
 					response = self.get_groups(conn, request_data)
 				case "create_group":
 					response = self.create_group(conn, request_data)
+				case "check_for_updates":
+					response = self.check_for_updates(conn, request_data)
 		except Exception as e:
 			response = {"status": "error", "message": "unknown error"}
 			logger.error(f"[SERVER] error: {e}")
@@ -181,8 +183,8 @@ class ChatServer(ChatServerUtilities):
 		cursor.execute("SELECT id FROM chats WHERE name = ?", (request_data["group_name"],))
 		group_id = cursor.fetchone()[0]
 
-		messages, last_id = self.get_messages(conn, group_id, request_data["last_id"])
-		response = {"status": "success", "messages": messages, "last_id": last_id}
+		messages, last_id, biggest_id = self.get_messages(conn, group_id, request_data["last_id"])
+		response = {"status": "success", "messages": messages, "last_id": last_id, "biggest_id": biggest_id}
 		return response
 
 	def get_personal_messages(self, cursor, conn, request_data):
@@ -194,8 +196,8 @@ class ChatServer(ChatServerUtilities):
 			""", (id1, id2, id2, id1))
 		chat_id = cursor.fetchone()[0]
 		
-		messages, last_id = self.get_messages(conn, chat_id, request_data["last_id"])
-		response = {"status": "success", "messages": messages, "last_id": last_id}
+		messages, last_id, biggest_id = self.get_messages(conn, chat_id, request_data["last_id"])
+		response = {"status": "success", "messages": messages, "last_id": last_id, "biggest_id": biggest_id}
 		return response
 
 	def get_users(self, cursor, conn, request_data):
@@ -383,15 +385,22 @@ class ChatServer(ChatServerUtilities):
 		group_name = request_data["name"]
 		return self.create_group_by_ids(conn, group_name, user_ids)
 
-	def create_group_by_ids(self, conn, group_name, participants_ids):
-		self.add_chat(conn, group_name)
-		group_id = self.get_chat_id(conn, group_name)
+	def check_for_updates(self, conn, request_data):
 		cursor = conn.cursor()
-		cursor.executemany("""
-			INSERT INTO group_participants (group_id, user_id) VALUES (?, ?)
-			""", [(group_id, user_id) for user_id in participants_ids])
-		conn.commit()
-		return {"status": "success", "message": f"group {group_name} created"}
+		print(1)
+		chat_id = self.get_chat_id(conn, request_data["chat_name"])
+		print(2)
+		biggest_id = request_data["biggest_id"]
+		print(3)
+		cursor.execute("SELECT sender_id, timestamp, content, POS_tags FROM messages WHERE chat_id = ? AND id > ?", (chat_id, biggest_id))
+		messages = cursor.fetchall()
+		messages = self.replenish_ids_with_usernames(conn, messages)
+		print(4)
+		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id > ?", (chat_id, biggest_id))
+		print(4.5)
+		biggest_id = max(self.flatten_array(cursor.fetchall()) + [-1])
+		print(5)
+		return {"messages": messages, "biggest_id": biggest_id}
 
 	def handle_client(self, client_socket):
 		private_key, public_key = generate_key()

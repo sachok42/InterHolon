@@ -98,20 +98,34 @@ class ChatServerUtilities:
 			""", (name,))
 		return cursor.fetchone()[0]
 		
+	def create_group_by_ids(self, conn, group_name, participants_ids):
+		self.add_chat(conn, group_name)
+		group_id = self.get_chat_id(conn, group_name)
+		cursor = conn.cursor()
+		cursor.executemany("""
+			INSERT INTO group_participants (group_id, user_id) VALUES (?, ?)
+			""", [(group_id, user_id) for user_id in participants_ids])
+		conn.commit()
+		return {"status": "success", "message": f"group {group_name} created"}
+
 	def get_messages(self, conn, group_id, last_id=1e9):
 		cursor = conn.cursor()
 		cursor.execute("""
-			SELECT sender_id, timestamp, content, POS_tags FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT 10
-			""", (group_id, last_id))
+			SELECT sender_id, timestamp, content, POS_tags FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT ?
+			""", (group_id, last_id, MESSAGES_PER_LOAD))
 		messages = cursor.fetchall()[-1::-1]
 		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT ?", (group_id, last_id, MESSAGES_PER_LOAD))
-		ids = self.flatten_array(cursor.fetchall()) + [1e9]
-		messages = self.replenish_ids_with_usernames(conn, messages)
-		last_id = min(ids)
+		ids = self.flatten_array(cursor.fetchall())
 		if len(messages) == 0:
-			last_id = 0
+			last_id = 1e9
+			biggest_id = -1
+		else:
+			last_id = min(ids)
+			biggest_id = max(ids)
+
+		messages = self.replenish_ids_with_usernames(conn, messages)
 		# messages_tagged = [(messages[i][:-1] + [tags[i]]) for i in range(len(messages))]
-		return messages, last_id
+		return messages, last_id, biggest_id
 
 	def flatten_array(self, array):
 		return np.array(array).flatten().tolist()
