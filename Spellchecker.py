@@ -1,6 +1,15 @@
+import phunspell
+import spellchecker as sp
+from log_protocol import *
+
+
 class Spellchecker:
-	def __init__(_spellchecker):
+	def __init__(self, _spellchecker):
 		self._spellchecker = _spellchecker
+		if not self.Im_Phunspell() and not self.Im_spellchecker():
+			custom_log(f"[Spellchecker]: undetected spellchecker")
+			raise Exception
+		custom_log(f"[SpellChecker] spellchecker initialized")
 
 	def Im_Phunspell(self):
 		return type(self._spellchecker) == phunspell.phunspell.Phunspell
@@ -14,10 +23,7 @@ class Spellchecker:
 			return self._spellchecker.lookup(word)
 
 		elif self.Im_spellchecker():
-			return self._spellchecker.suggestion(word) == word
-
-		print("undetected type")
-		raise Exception
+			return self._spellchecker.correction(word) == word
 	
 	def correction(self, word):
 		custom_log(f"[Spellchecker] on correction: word is {word}")

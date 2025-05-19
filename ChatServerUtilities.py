@@ -29,7 +29,7 @@ class ChatServerUtilities:
 		custom_log(f"[ChatServerUtilities] on spellcheck_text: message is {message}")
 		if language not in self.spellcheckers:
 			if language_names_to_shortnames[language] in good_spellchecking_supporting:
-				sellf.spellcheckers[language] = Spellchecker(sp.SpellChecker(language=language_names_to_shortnames[language]))
+				self.spellcheckers[language] = Spellchecker(sp.SpellChecker(language=language_names_to_shortnames[language]))
 			else:
 				self.spellcheckers[language] = Spellchecker(Phunspell(full_names_to_phunspell_names[language]))
 			custom_log(f"[ChatServerUtilities] on spellcheck_text: created spellchecker for language {language}")
