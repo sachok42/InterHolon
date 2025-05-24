@@ -10,6 +10,8 @@ from protocol import *
 from messagebox import PushNotification
 from threading import Thread
 import time
+from copy import copy
+
 
 class ChatAppGUI(ChatAppLogic, QMainWindow):
 	def __init__(self):
@@ -113,11 +115,13 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 				custom_log("[CLIENT] on automatic_load: no chat")
 
 	def get_updates(self): # returns the number of messages got with the update
-		new_messages, biggest_id = self.check_for_updates(self.current_chat, self.biggest_id)
+		new_messages, biggest_id, colored_messages = self.check_for_updates(self.current_chat, self.biggest_id)
 		cursor = self.chat_display.textCursor()
 		cursor.movePosition(QTextCursor.MoveOperation.End)
 		for message in new_messages:
 			self.load_message(message, cursor)
+		for message in colored_messages:
+			self.reload_message(message)
 		if biggest_id != -1:
 			self.biggest_id = biggest_id
 		return len(new_messages)
@@ -147,16 +151,18 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		# print(f"packing tags: words are {words}, tags are {tags}")
 		return [(words[i], tags[i]) for i in range(len(words))]
 
-	def load_message(self, message, cursor):
+	def load_message(self, message, cursor, totheend=True):
 		custom_log(f"[CLIENT] on load_messages_GUI: started loading message {message}")
-		sender, timestamp, content, POS_tags = message
-		cursor.movePosition(QTextCursor.MoveOperation.End)
+		sender, id, timestamp, content, POS_tags = message
+		if totheend:
+			cursor.movePosition(QTextCursor.MoveOperation.End)
 		text_format = QTextCharFormat()
 		text_format.setForeground(QColor("white"))	
 		cursor.mergeCharFormat(text_format)
-		cursor.insertText(f"{message[0]}:\n")
+		# cursor.insertText(f"{id}\n")
 		# cursor.movePosition(QTextCursor.MoveOperation.End)
 		if POS_tags:
+			cursor.insertText(f"{sender}:\n")
 			parsed_text = self.pack_tags(content.split(), POS_tags.split())
 			# cursor.movePosition(QTextCursor.MoveOperation.End)
 			for word, POS_tag in parsed_text:
@@ -175,11 +181,12 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 			text_format.setForeground(QColor("white"))	
 			cursor.mergeCharFormat(text_format)
 			cursor.insertText(f"\n{timestamp}\n\n")
+			# cursor.insertText(f"{id}\n\n")
 			# self.chat_display.append(f"\n{timestamp}\n")
 			custom_log(f"[CLIENT] on load_messages_GUI: message is loaded tagged")
 		else:
 			custom_log(f"[CLIENT] on load_messages_GUI: message is loaded monotone")
-			self.load_message_monotone(message)
+			self.load_message_monotone(message, cursor)
 
 
 	def load_messages_GUI(self, chat_name):
@@ -198,9 +205,26 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 			for message in messages:
 				self.load_message_monotone(message)
 
-	def load_message_monotone(self, message):
-		sender, timestamp, content, POS_tags = message
-		self.chat_display.append(f"{content}\n{timestamp}\n")
+	def load_message_monotone(self, message, cursor):
+		position = cursor.position()
+		sender, id, timestamp, content, POS_tags = message
+		cursor.insertText(f"{sender}:\n{content}\n{timestamp}\n\n")
+		self.uncolored_messages[id] = [position, cursor.position()]
+
+	def reload_message(self, message):
+		sender, id, timestamp, content, POS_tags = message
+		if not POS_tags:
+			return
+		custom_log(f"[CLIENT] on reload_message: content is {content}, id is {id}")
+		if id in self.uncolored_messages:
+			cursor = self.chat_display.textCursor()
+			start, end = self.uncolored_messages[id]
+			custom_log(f"[CLIENT] on reload_message: start position is {start}, end position is {end}")
+			cursor.setPosition(start)
+			cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+			cursor.removeSelectedText()
+			self.load_message(message, cursor, totheend=False)
+			self.uncolored_messages.pop(id)
 
 	def load_more(self):
 		def insert_text_at_beginning(text, display):
@@ -211,22 +235,27 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		cursor = self.chat_display.textCursor()
 		cursor.movePosition(QTextCursor.MoveOperation.Start)
 		# cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, len + 1)
-		for sender, timestamp, content, POS_tags in messages:
-			if POS_tags:
-				cursor.insertText(f"{sender}\n")
-				words = self.pack_tags(content.split(), POS_tags.split())
-				for word, POS_tag in words:
-					text_format = QTextCharFormat()
-					text_format.setForeground(QColor(POS_color_map[POS_tag]))
-					cursor.mergeCharFormat(text_format)
-					cursor.insertText(f"{word} ")
+		for message in messages:
+			self.load_message(message, cursor, totheend=False)
+			# if POS_tags:
+			# 	cursor.insertText(f"{id}\n")
+			# 	cursor.insertText(f"{sender}\n")
+			# 	words = self.pack_tags(content.split(), POS_tags.split())
+			# 	for word, POS_tag in words:
+			# 		text_format = QTextCharFormat()
+			# 		text_format.setForeground(QColor(POS_color_map[POS_tag]))
+			# 		cursor.mergeCharFormat(text_format)
+			# 		cursor.insertText(f"{word} ")
 
-				text_format.setForeground(QColor(POS_color_map[POS_tag]))
-				cursor.mergeCharFormat(text_format)			
-				cursor.insertText(f"\n{timestamp}\n\n")
-			else:
-				insert_text_at_beginning(f"{sender}: {content}\n{timestamp}\n", self.chat_display)
-
+			# 	text_format.setForeground(QColor(POS_color_map[POS_tag]))
+			# 	cursor.mergeCharFormat(text_format)			
+			# 	cursor.insertText(f"\n{timestamp}\n\n")
+			# else:
+			# 	insert_text_at_beginning(f"{sender}: {content}\n{timestamp}\n", self.chat_display)
+		position = cursor.position()
+		for message in self.uncolored_messages:
+			self.uncolored_messages[message][0] += position
+			self.uncolored_messages[message][1] += position
 
 	def open_chat_window(self):
 		central_widget = QWidget()

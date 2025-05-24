@@ -24,6 +24,7 @@ class ChatAppLogic:
 		custom_log(f"[CLIENT] got pem starting {received_data.hex()[:10]}")
 		self.public_key = serialization.load_pem_public_key(received_data)
 		self.biggest_id = -1
+		self.uncolored_messages = {} # key is message id, item is message position cursor with the message itself fully selected 
 		# custom_log(f"[CLIENT] my ")
 
 	def get_languages(self):
@@ -61,9 +62,9 @@ class ChatAppLogic:
 
 	def check_for_updates(self, chat_name, biggest_id_used=-1):
 		action = "check_for_updates"
-		data = {"chat_name": chat_name, "biggest_id": biggest_id_used}
+		data = {"chat_name": chat_name, "biggest_id": biggest_id_used, "uncolored_messages": list(self.uncolored_messages)}
 		response = self.send_request(action, data)
-		return response["messages"], response["biggest_id"]
+		return response["messages"], response["biggest_id"], response["colored_messages"]
 
 	def load_messages(self, chat_name, last_id_usage=False, update=False):
 		custom_log(f"[CLIENT] on_load_messages: from chat {chat_name}")
