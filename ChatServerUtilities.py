@@ -120,10 +120,12 @@ class ChatServerUtilities:
 	def get_messages(self, conn, group_id, last_id=1e9):
 		cursor = conn.cursor()
 		cursor.execute("""
-			SELECT sender_id, id, timestamp, content, POS_tags FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT ?
+			SELECT sender_id, id, timestamp, content, POS_tags FROM messages
+			 WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT ?
 			""", (group_id, last_id, MESSAGES_PER_LOAD))
 		messages = cursor.fetchall()[-1::-1]
-		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT ?", (group_id, last_id, MESSAGES_PER_LOAD))
+		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id < ? ORDER BY id DESC LIMIT ?", \
+			(group_id, last_id, MESSAGES_PER_LOAD))
 		ids = self.flatten_array(cursor.fetchall())
 		if len(messages) == 0:
 			last_id = 1e9

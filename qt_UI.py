@@ -178,7 +178,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 				cursor.insertText(f'{word} ')
 				# custom_log(f"[CLIENT] on load_messages_GUI tag-coloring: word is {word}")
 				# custom_log(f"Selected text is {cursor.selectedText()}, POS_tag is {POS_tag}, POS_color is {POS_color_map[POS_tag]}")
-			cursor.movePosition(QTextCursor.MoveOperation.End)
+			# cursor.movePosition(QTextCursor.MoveOperation.End)
 			text_format = QTextCharFormat()
 			text_format.setForeground(QColor("white"))	
 			cursor.mergeCharFormat(text_format)
@@ -229,18 +229,13 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 			self.uncolored_messages.pop(id)
 
 	def load_more(self):
-		def insert_text_at_beginning(text, display):
-			current_text = display.toPlainText()
-			display.setPlainText(text + current_text)
-
-		messages = self.load_messages(self.current_chat, True)
+		messages = self.load_messages(self.current_chat, last_id_usage=True)
 		cursor = self.chat_display.textCursor()
 		cursor.movePosition(QTextCursor.MoveOperation.Start)
 		# cursor.movePosition(QTextCursor.Right, QTextCursor.MoveAnchor, len + 1)
 		for message in messages:
 			self.load_message(message, cursor, totheend=False)
 			# if POS_tags:
-			# 	cursor.insertText(f"{id}\n")
 			# 	cursor.insertText(f"{sender}\n")
 			# 	words = self.pack_tags(content.split(), POS_tags.split())
 			# 	for word, POS_tag in words:
@@ -253,7 +248,7 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 			# 	cursor.mergeCharFormat(text_format)			
 			# 	cursor.insertText(f"\n{timestamp}\n\n")
 			# else:
-			# 	insert_text_at_beginning(f"{sender}: {content}\n{timestamp}\n", self.chat_display)
+			# 	self.load_message_monotone(message, cursor)
 		position = cursor.position()
 		for message in self.uncolored_messages:
 			self.uncolored_messages[message][0] += position

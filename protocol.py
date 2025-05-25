@@ -98,4 +98,4 @@ def get_message_by_parts(used_socket, public_key):
 def get_message(used_socket, public_key):
 	pass
 
-MESSAGES_PER_LOAD = 50
+MESSAGES_PER_LOAD = 10

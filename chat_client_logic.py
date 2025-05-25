@@ -66,7 +66,7 @@ class ChatAppLogic:
 		response = self.send_request(action, data)
 		return response["messages"], response["biggest_id"], response["colored_messages"]
 
-	def load_messages(self, chat_name, last_id_usage=False, update=False):
+	def load_messages(self, chat_name, last_id_usage=False):
 		custom_log(f"[CLIENT] on_load_messages: from chat {chat_name}")
 		action = "get_group_messages" if self.chat_mode == "group" else "get_personal_messages"
 		data = {
@@ -77,7 +77,7 @@ class ChatAppLogic:
 		}
 		
 		response = self.send_request(action, data)
-		if not update:
+		if response["messages"]:
 			self.last_id = response["last_id"]
 		if not last_id_usage:
 			self.biggest_id = response["biggest_id"]
