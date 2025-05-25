@@ -386,14 +386,13 @@ class ChatServer(ChatServerUtilities):
 		return self.create_group_by_ids(conn, group_name, user_ids)
 
 	def check_for_updates(self, conn, request_data):
-		# custom_log(f"[SERVER] on check_for_updates")
+		conn = sqlite3.connect("chat_server.db")
 		cursor = conn.cursor()
 		chat_id = self.get_chat_id(conn, request_data["chat_name"])
 		biggest_id = request_data["biggest_id"]
 		uncolored_messages = list(map(str, request_data["uncolored_messages"]))
 		cursor.execute("SELECT sender_id, id, timestamp, content, POS_tags FROM messages WHERE chat_id = ? AND id > ?", (chat_id, biggest_id))
 
-		# custom_log(f"[SERVER] on check_for_updates: half done")
 		messages = cursor.fetchall()
 		messages = self.replenish_ids_with_usernames(conn, messages)
 		cursor.execute("SELECT id FROM messages WHERE chat_id = ? AND id > ?", (chat_id, biggest_id))
@@ -404,7 +403,7 @@ class ChatServer(ChatServerUtilities):
 		cursor.execute(query, [chat_id] + uncolored_messages)
 		colored_messages = cursor.fetchall()
 		colored_messages = self.replenish_ids_with_usernames(conn, colored_messages)
-		# custom_log(f"[SERVER] on check_for_updates: everything is ready for sending back")
+		conn.commit()
 
 		return {"messages": messages, "biggest_id": biggest_id, "colored_messages": colored_messages}
 

@@ -26,10 +26,10 @@ class Spellchecker:
 			return self._spellchecker.correction(word) == word
 	
 	def correction(self, word):
-		custom_log(f"[Spellchecker] on correction: word is {word}")
+		# custom_log(f"[Spellchecker] on correction: word is {word}")
 		if self.Im_Phunspell():
 			corrections_lowered = [variant.lower() for variant in self._spellchecker.suggest(word)]
-			logger.info(f"[MESSAGE] on analyze: found mistake, suggestions are {', '.join(corrections_lowered)}")
+			logger.info(f"[MESSAGE] on correction: found mistake, suggestions are {', '.join(corrections_lowered)}")
 			try:
 				correction = corrections_lowered[0]
 			except:

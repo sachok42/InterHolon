@@ -8,6 +8,8 @@ from log_protocol import create_file_logger
 import spellchecker as sp
 from language_protocol import good_spellchecking_supporting
 from Spellchecker import Spellchecker
+from decomplex_numbers import decomplex_numbers
+
 
 create_file_logger("language_logger")
 lang_logger = logging.getLogger("language_logger")
@@ -142,10 +144,15 @@ class ChatServerUtilities:
 		try:
 			conn = sqlite3.connect("chat_server.db")
 			cursor = conn.cursor()
-			pre_tags = self.tag_text(message.language, message.content)
+			content = decomplex_numbers(message.content)
+			pre_tags = self.tag_text(message.language, content)
 
 			tags = ' '.join([tag[1] for sentence in pre_tags for tag in sentence])
 			content = ' '.join([tag[0] for sentence in pre_tags for tag in sentence])
+			new_words = []
+			if len(tags.split()) != len(content.split()):
+				custom_log(f"[SERVER] on analyze_message_autonomous: CODE RED: something was tagged badly on message {ID}")
+
 			cursor.execute("""
 				UPDATE messages SET POS_tags = ?, content = ? WHERE ID = ?
 				""", (tags, content, ID))
@@ -154,8 +161,10 @@ class ChatServerUtilities:
 			mistakes = self.spellcheck_text(message.language, message)
 			# logger.info(f"[SERVER] on analyze_message_autonomous: tags are {tags}")
 			cursor.executemany("""
-				INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word, wrong_word) VALUES (?, ?, ?, ?, ?, ?)
-				""", [(self.get_user_id(conn, message.sender), 1, ID, mistake["word_number"], mistake["corrected_word"], mistake["original"]) for mistake in mistakes])
+				INSERT INTO typos (user_id, language_id, message_id, word_number, corrected_word, wrong_word) 
+				VALUES (?, ?, ?, ?, ?, ?)
+				""", [(self.get_user_id(conn, message.sender), 1, ID, \
+				 mistake["word_number"], mistake["corrected_word"], mistake["original"]) for mistake in mistakes])
 		except Exception as e:
 			lang_logger.error(f"[SERVER]: exception {e}")
 		conn.commit()

@@ -119,8 +119,10 @@ class ChatAppGUI(ChatAppLogic, QMainWindow):
 		cursor = self.chat_display.textCursor()
 		cursor.movePosition(QTextCursor.MoveOperation.End)
 		for message in new_messages:
+			custom_log(f"[CLIENT] on get_updates: new message is message id {message[1]}")
 			self.load_message(message, cursor)
 		for message in colored_messages:
+			custom_log(f"[CLIENT] on get_updates: colored message is message id {message[1]}")
 			self.reload_message(message)
 		if biggest_id != -1:
 			self.biggest_id = biggest_id
